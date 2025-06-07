@@ -1,0 +1,126 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Shepard Tone Trainer – Full + Preview</title>
+<style>
+:root{--blue:#2563eb;--dk:#1e40af;--bg:#f8fafc}
+body{font-family:sans-serif;background:var(--bg);display:flex;flex-direction:column;align-items:center;gap:1rem;padding:1rem;min-height:100vh}
+h1{margin:0;font-size:1.25rem}
+.row{display:flex;gap:.7rem;flex-wrap:wrap;justify-content:center}
+select,button,input[type=range]{font-size:.95rem;border-radius:9px;padding:.5rem .9rem}
+select{border:1px solid #cbd5e1}
+.ctrl{background:var(--blue);color:#fff;border:none;font-weight:600;cursor:pointer}
+.ctrl:active{background:var(--dk)}
+.note-btn{background:#e2e8f0;border:none;border-radius:8px;padding:.55rem .9rem;font-size:.95rem;cursor:pointer}
+.note-btn.active{background:var(--blue);color:#fff}
+.wrap{display:flex;gap:.5rem;flex-wrap:wrap;justify-content:center}
+#timer{font-weight:700;color:var(--blue)}
+#result{font-weight:600;min-height:1.4em}
+#stats{font-size:.85rem;text-align:center}
+</style>
+<link rel="manifest" href="manifest.json">
+<script>
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js');}
+</script>
+</head><body>
+<h1>Shepard-Tone Chroma Trainer</h1>
+
+<div class="row">
+<label>Timbre <select id="timbre"><option>Sine</option><option>Triangle</option><option>Saw</option></select></label>
+<label>Dur <select id="dur"></select></label>
+<label>Countdown <select id="limit"></select></label>
+<label>Cleanser <select id="cleanser">
+  <option value="none">None</option>
+  <option value="cloud">12-tone cloud 1s</option>
+  <option value="white150">White 150 ms</option>
+  <option value="pink300">Pink 300 ms</option>
+  <option value="gap1500">Silent 1.5 s</option></select></label>
+</div>
+
+<div class="row">
+<label>C weight <input type="range" id="bias" min="1" max="10" value="5"></label><span id="biasVal">5×</span>
+<label><input type="checkbox" id="auto"> Autoplay</label>
+</div>
+
+<div id="notesWrap" class="wrap"></div>
+<button id="playBtn" class="ctrl">▶︎ Play Quiz Tone</button>
+<div id="guessWrap" class="wrap"></div>
+
+<div id="timer"></div><div id="result"></div><div id="stats"></div>
+
+<script>
+const NOTES=["C","Cs","D","Ds","E","F","Fs","G","Gs","A","As","B"];
+const durSel=document.getElementById('dur');[1,2,3,5,8,10,15,30,0].forEach(v=>durSel.add(new Option(v? v+' s':'∞',v)));durSel.value=3;
+const limSel=document.getElementById('limit');limSel.add(new Option('None',0,true,true));for(let i=1;i<=10;i++)limSel.add(new Option(i+' s',i));
+const bias=document.getElementById('bias'),biasVal=document.getElementById('biasVal');bias.oninput=()=>biasVal.textContent=bias.value+'×';
+
+const notesWrap=document.getElementById('notesWrap'),guessWrap=document.getElementById('guessWrap');
+NOTES.forEach(n=>notesWrap.insertAdjacentHTML('beforeend',`<label><input type='checkbox' id='cb_${n}' checked> ${n.replace('s','♯')}</label>`));
+notesWrap.addEventListener('change',refreshButtons);
+
+function selected(){return NOTES.filter(n=>document.getElementById('cb_'+n).checked);}
+function refreshButtons(){
+  guessWrap.innerHTML='';
+  selected().forEach(n=>{
+    const b=document.createElement('button');b.textContent=n.replace('s','♯');b.className='note-btn';
+    b.onclick=()=>noteClick(b,n);guessWrap.appendChild(b);
+  });
+}
+refreshButtons();
+
+let ctx,previewMaster=null,previewNodes=[],quizMaster=null,quizNodes=[],currentQuiz=null;
+let hits=0,tries=0,streak=0,best=0,rts=[];let tick,timeout,autoTimer=null,startTime=0;
+const res=id('result'),stats=id('stats'),timer=id('timer');
+function id(x){return document.getElementById(x);}function ac(){return ctx||(ctx=new (window.AudioContext||window.webkitAudioContext)());}
+function hz(i){return 261.625565*Math.pow(2,i/12);}
+function stopPreview(){if(!previewMaster)return;const now=ctx.currentTime;previewMaster.gain.setTargetAtTime(0,now,.05);
+  setTimeout(()=>previewNodes.forEach(o=>o.disconnect()),160);previewNodes=[];previewMaster=null;document.querySelectorAll('.note-btn.active').forEach(b=>b.classList.remove('active'));}
+function startPreview(note,btn){stopPreview();const ctx=ac();previewMaster=ctx.createGain();previewMaster.gain.value=.4;previewMaster.connect(ctx.destination);
+  const base=hz(NOTES.indexOf(note));for(let k=-5;k<=5;k++){const f=base*Math.pow(2,k);if(f<40||f>2e4)continue;
+  const o=ctx.createOscillator();o.type='sine';o.frequency.value=f;const g=ctx.createGain();g.gain.value=Math.exp(-.5*Math.pow(Math.log2(f/440)/.33,2));
+  o.connect(g).connect(previewMaster);o.start();previewNodes.push(o);}btn.classList.add('active');}
+function stopQuiz(){if(!quizMaster)return;const now=ctx.currentTime;quizMaster.gain.setTargetAtTime(0,now,.05);
+  setTimeout(()=>quizNodes.forEach(o=>o.disconnect()),160);quizMaster=null;quizNodes=[];}
+function clearTimers(){clearTimeout(timeout);clearInterval(tick);clearTimeout(autoTimer);autoTimer=null;timer.textContent='';}
+function buildPool(){const arr=[],b=parseInt(bias.value,10);selected().forEach(n=>{const w=n==='C'?b:1;for(let i=0;i<w;i++)arr.push(n);});return arr;}
+
+function noise(type,dur){const ctx=ac(),b=ctx.createBuffer(1,ctx.sampleRate*dur,ctx.sampleRate),dta=b.getChannelData(0);
+ for(let i=0;i<dta.length;i++){let v=Math.random()*2-1;if(type==='pink')v/=Math.sqrt(i+1);dta[i]=v*.25;}
+ const s=ctx.createBufferSource();s.buffer=b;s.connect(ctx.destination);s.start();}
+function cloud(){const ctx=ac(),g=ctx.createGain();g.gain.value=.35;g.connect(ctx.destination);
+ const t0=ctx.currentTime,ms=1000;g.gain.setValueAtTime(0,t0);g.gain.linearRampToValueAtTime(.35,t0+.005);g.gain.setValueAtTime(.35,t0+ms/1000-.05);
+ g.gain.linearRampToValueAtTime(0,t0+ms/1000);for(let i=0;i<14;i++){const n=Math.floor(Math.random()*12),c=Math.random()*40-20;
+ const f=hz(n)*Math.pow(2,c/1200);const o=ctx.createOscillator();o.type='sine';o.frequency.value=f;o.connect(g);o.start(t0);o.stop(t0+ms/1000);}}
+
+function cleanserDelay(){const sel=id('cleanser').value;if(sel==='cloud'){cloud();return 1000;}
+ if(sel==='white150'){noise('white',0.15);return 150;}if(sel==='pink300'){noise('pink',0.3);return 300;}if(sel.startsWith('gap'))return parseInt(sel.slice(3));return 0;}
+
+function playQuiz(){stopPreview();clearTimers();stopQuiz();
+ const pool=buildPool();if(!pool.length){alert('Select notes');return;}currentQuiz=pool[Math.floor(Math.random()*pool.length)];
+ const ctx=ac(),dur=parseFloat(durSel.value),timb=id('timbre').value;quizMaster=ctx.createGain();quizMaster.connect(ctx.destination);
+ if(dur>0){quizMaster.gain.setValueAtTime(0,ctx.currentTime);quizMaster.gain.linearRampToValueAtTime(.5,ctx.currentTime+.05);
+           quizMaster.gain.setValueAtTime(.5,ctx.currentTime+dur-.05);quizMaster.gain.linearRampToValueAtTime(0,ctx.currentTime+dur);}else quizMaster.gain.value=.5;
+ const base=hz(NOTES.indexOf(currentQuiz));for(let k=-5;k<=5;k++){const f=base*Math.pow(2,k);if(f<40||f>2e4)continue;
+  const o=ctx.createOscillator();o.type=timb.toLowerCase();o.frequency.value=f;const g=ctx.createGain();g.gain.value=Math.exp(-.5*Math.pow(Math.log2(f/440)/.33,2));
+  o.connect(g).connect(quizMaster);o.start();if(dur>0)o.stop(ctx.currentTime+dur);quizNodes.push(o);}quizNodes.push(quizMaster);
+ startTime=performance.now();res.textContent='';const lim=parseInt(limSel.value,10);if(lim){let rem=lim;timer.textContent=rem.toFixed(1)+' s';
+  tick=setInterval(()=>{rem-=.1;timer.textContent=rem.toFixed(1)+' s';},100);timeout=setTimeout(()=>submit(true,null),lim*1000);} }
+
+function submit(auto,note){
+  if(currentQuiz===null)return;clearTimers();stopQuiz();
+  const rt=(performance.now()-startTime)/1000;rts.push(rt);tries++;
+  const ok=!auto&&note===currentQuiz;if(ok){hits++;streak++;best=Math.max(best,streak);res.textContent=`✅ ${note} (${rt.toFixed(2)} s)`;}
+  else{streak=0;res.textContent=auto?`⌛ Time – ${currentQuiz}`:`❌ ${currentQuiz} (${rt.toFixed(2)} s)`;}currentQuiz=null;updateStats();
+  const pause=cleanserDelay();if(id('auto').checked)autoTimer=setTimeout(playQuiz,pause+500);
+}
+
+function noteClick(btn,note){
+  if(currentQuiz){submit(false,note);return;}
+  btn.classList.contains('active')?stopPreview():startPreview(note,btn);
+}
+
+function updateStats(){const acc=hits/tries*100||0,avg=rts.reduce((a,b)=>a+b,0)/rts.length||0;
+ stats.textContent=`Attempts ${tries} • Acc ${acc.toFixed(1)}% • Streak ${streak} (best ${best}) • Avg ${avg.toFixed(2)} s`;}
+
+id('playBtn').onclick=playQuiz;
+</script>
+</body></html>
