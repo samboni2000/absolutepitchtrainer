@@ -61,8 +61,8 @@ const $=id=>document.getElementById(id);
 let ctx;const ac=()=>ctx||(ctx=new (window.AudioContext||window.webkitAudioContext)()), hz=i=>261.625565*2**(i/12);
 
 // populate selects
-[2,3,5,8,10,15,30].forEach(v=>$('dur').add(new Option(v+' s',v)));
-[3,5,8,10,15,20,30].forEach(v=>$('limit').add(new Option(v+' s',v)));$('limit').add(new Option('None',0));$('limit').value=3;
+[0.5,1,1.5,2,3,5,8,10,15,30,60].forEach(v=>$('dur').add(new Option(v+' s',v)));
+[1,2,3,5,8,10,15,20,30,45,60].forEach(v=>$('limit').add(new Option(v+' s',v)));$('limit').add(new Option('None',0));$('limit').value=3;
 $('bias').oninput=()=>$('biasVal').textContent=$('bias').value+'×';
 
 // note grid
@@ -91,12 +91,12 @@ function runCleanser(){const kind=$('cleanser').value,d=parseFloat($('clDur').va
 
 // helpers
 function clearTimers(){clearTimeout(countdownID);clearTimeout(readyID);clearTimeout(answerTimeout);}
-function showAnswer(txt){$('answer').textContent=txt;clearTimeout(answerTimeout);answerTimeout=setTimeout(()=>$('answer').textContent='',3000);}
+function showAnswer(txt){$('answer').textContent=txt;clearTimeout(answerTimeout);answerTimeout=setTimeout(()=>$('answer').textContent='',7000);}
 
 // quiz flow
 function playQuiz(){stopPreview();clearTimers();stopQuiz();$('answer').textContent='';const pool=[];const bias=parseInt($('bias').value);selected().forEach(n=>{for(let i=0;i<(n==='C'?bias:1);i++)pool.push(n);});if(!pool.length){alert('Select notes');return;}current=pool[Math.floor(Math.random()*pool.length)];
  const ctx=ac(),dur=parseFloat($('dur').value),wave=$('timbre').value;quizMaster=ctx.createGain();quizMaster.connect(ctx.destination);if(dur>0){quizMaster.gain.setValueAtTime(0,ctx.currentTime);quizMaster.gain.linearRampToValueAtTime(.5,ctx.currentTime+.05);quizMaster.gain.setValueAtTime(.5,ctx.currentTime+dur-.05);quizMaster.gain.linearRampToValueAtTime(0,ctx.currentTime+dur);}else quizMaster.gain.value=.5;const base=hz(NOTES.indexOf(current));for(let k=-5;k<=5;k++){const f=base*2**k;if(f<40||f>2e4)continue;const o=ctx.createOscillator();o.type=wave.toLowerCase();o.frequency.value=f;const g=ctx.createGain();g.gain.value=Math.exp(-.5*(Math.log2(f/440)/.33)**2);o.connect(g).connect(quizMaster);o.start();if(dur>0)o.stop(ctx.currentTime+dur);quizNodes.push(o);}quizNodes.push(quizMaster);
- startTime=performance.now();$('status').textContent='🎵 '+current;
+ startTime=performance.now();$('status').textContent='🎵 playing';
  const lim=parseInt($('limit').value);if(lim){countdownID=setTimeout(()=>startCountdown(lim),dur*1000);} }
 
 function startCountdown(sec){let rem=sec;$('status').textContent=rem;countdownID=setInterval(()=>{rem--;$('status').textContent=rem;if(rem<=0){clearInterval(countdownID);handleSubmit(true,null);}},1000);}
