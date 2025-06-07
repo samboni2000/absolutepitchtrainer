@@ -1,55 +1,52 @@
 
 <!DOCTYPE html><html lang="en"><head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Shepard Ear Trainer v6</title>
+<title>Shepard Ear Trainer</title>
 <style>
-:root{--blue:#2563eb;--dk:#1e40af;--bg:#f8fafc;--card:#ffffff}
-body{font-family:sans-serif;background:var(--bg);display:flex;flex-direction:column;align-items:center;gap:1rem;padding:1rem}
-fieldset{background:var(--card);border:1px solid #e2e8f0;border-radius:10px;padding:.8rem 1rem;min-width:270px}
-legend{padding:0 .4em;font-weight:600;color:var(--blue)}
-label{display:flex;align-items:center;gap:.3rem;margin:.3rem 0}
-select,button,input[type=range],input[type=number]{font-size:.9rem;border-radius:8px;padding:.45rem .8rem}
-select,input[type=number]{border:1px solid #cbd5e1}
-.ctrl{background:var(--blue);color:#fff;border:none;font-weight:600;cursor:pointer}
+:root{--blue:#2563eb;--dk:#1e40af;--bg:#f1f5f9;--card:#ffffff}
+body{font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;background:var(--bg);margin:0;padding:1rem;display:flex;flex-direction:column;align-items:center;gap:1rem}
+h2{margin:.2rem 0 .6rem;font-size:1.4rem;text-align:center}
+fieldset{background:var(--card);border:1px solid #e2e8f0;border-radius:12px;padding:.8rem 1rem;min-width:260px}
+legend{padding:0 .5rem;font-weight:600;color:var(--blue)}
+label{display:flex;align-items:center;justify-content:space-between;gap:.6rem;font-size:.9rem;margin:.35rem 0}
+select,input[type=number]{font-size:.9rem;border:1px solid #cbd5e1;border-radius:8px;padding:.35rem .6rem}
+input[type=range]{flex:1}
+.ctrl{background:var(--blue);color:#fff;border:none;border-radius:10px;font-weight:600;padding:.6rem 1rem;margin-top:.6rem;font-size:1rem}
 .ctrl:active{background:var(--dk)}
-.note-btn{background:#e2e8f0;border:none;border-radius:7px;padding:.5rem .8rem;font-size:.9rem;cursor:pointer}
+.note-btn{background:#e2e8f0;border:none;border-radius:7px;padding:.45rem .8rem;font-size:.9rem;margin:.2rem}
 .note-btn.active{background:var(--blue);color:#fff}
-.wrap{display:flex;gap:.45rem;flex-wrap:wrap;justify-content:center}
-#status{font-weight:600;min-height:1.3em;text-align:center}
+#status{min-height:1.4em;font-weight:600;text-align:center}
 #stats{font-size:.8rem;text-align:center}
+.notes-grid{display:grid;grid-template-columns:repeat(6,auto);gap:.3rem;justify-content:center;margin-top:.5rem}
 </style>
-<link rel="manifest" href="manifest.json"><script>if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');</script>
+<link rel="manifest" href="manifest.json"><script>if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js');}</script>
 </head><body>
 <h2>Shepard Ear Trainer</h2>
 
-<!-- ① Tone group -->
 <fieldset><legend>Tone Settings</legend>
-<label>Timbre <select id="timbre"><option>Sine</option><option>Triangle</option><option>Saw</option></select></label>
-<label>Duration <select id="dur"></select></label>
-<label>Timer <select id="limit"></select></label>
-<label>C weight <input id="bias" type="range" min="1" max="10" value="5"><span id="biasVal">5×</span></label>
-<label><input id="auto" type="checkbox"> Autoplay</label>
+<label><span>Timbre</span><select id="timbre"><option selected>Sine</option><option>Triangle</option><option>Saw</option></select></label>
+<label><span>Duration</span><select id="dur"></select></label>
+<label><span>Timer</span><select id="limit"></select></label>
+<label style="flex-direction:column;align-items:flex-start"><span>C weight <span id="biasVal">1×</span></span><input id="bias" type="range" min="1" max="10" value="1"></label>
+<label><input id="auto" type="checkbox" checked> Autoplay</label>
 </fieldset>
 
-<!-- ② Cleanser group -->
 <fieldset><legend>Cleanser</legend>
-<label>Type <select id="cleanser">
- <option value="none">None</option>
- <option value="cloud">12‑tone cloud</option>
- <option value="atonal">Atonal series</option>
- <option value="white">White noise</option>
- <option value="pink">Pink noise</option>
- <option value="gap">Silent gap</option></select></label>
-<label>Duration <input id="clDur" type="number" min="0.2" step="0.2" value="1" style="width:4rem"> s</label>
-<label>Every <input id="clEvery" type="number" min="1" value="1" style="width:3rem"> cycles</label>
+<label><span>Type</span><select id="cleanser">
+  <option value="none">None</option>
+  <option value="cloud">12‑tone cloud</option>
+  <option value="atonal" selected>Atonal series</option>
+  <option value="white">White noise</option>
+  <option value="pink">Pink noise</option>
+  <option value="gap">Silent gap</option></select></label>
+<label><span>Duration</span><input id="clDur" type="number" value="20" min="0.5" step="0.5" style="width:4rem"> s</label>
+<label><span>Every</span><input id="clEvery" type="number" value="10" min="1" style="width:3rem"> cycles</label>
 </fieldset>
 
-<!-- Note selection -->
-<div id="notesWrap" class="wrap" style="margin-top:.8rem"></div>
-<button id="playBtn" class="ctrl">▶︎ Play Quiz Tone</button>
-<div id="guessWrap" class="wrap"></div>
+<div id="notesWrap" class="notes-grid"></div>
+<button id="playBtn" class="ctrl">▶︎ Play Quiz Tone</button>
+<div id="guessWrap" class="notes-grid"></div>
 
-<!-- status / stats -->
 <div id="status"></div>
 <div id="stats"></div>
 
@@ -60,44 +57,46 @@ let ctx;const ac=()=>ctx||(ctx=new (window.AudioContext||window.webkitAudioConte
 const hz=i=>261.625565*2**(i/12);
 
 // populate selects
-[1,2,3,5,8,10,15,30,0].forEach(v=>$('dur').add(new Option(v? v+' s':'∞',v)));$('dur').value=3;
-$('limit').add(new Option('None',0,true,true));for(let i=1;i<=10;i++)$('limit').add(new Option(i+' s',i));
+[2,3,5,8,10,15,30,0].forEach(v=>$('dur').add(new Option(v? v+' s':'∞',v)));
+$('limit').add(new Option('None',0,true,true));[5,10,15].forEach(v=>$('limit').add(new Option(v+' s',v)));
 $('bias').oninput=()=>$('biasVal').textContent=$('bias').value+'×';
 
-// note checkboxes & buttons
+// note checkboxes/buttons
 const notesWrap=$('notesWrap'),guessWrap=$('guessWrap');
-NOTES.forEach(n=>notesWrap.insertAdjacentHTML('beforeend',`<label><input type='checkbox' id='cb_${n}' checked> ${n.replace('s','♯')}</label>`));
-notesWrap.addEventListener('change',refreshBtns); refreshBtns();
+const defaultNotes=['C','Fs','A'];
+NOTES.forEach(n=>{const id='cb_'+n;const checked=defaultNotes.includes(n);notesWrap.insertAdjacentHTML('beforeend',`<label><input id='${id}' type='checkbox' ${checked?'checked':''}>${n.replace('s','♯')}</label>`);});
+notesWrap.addEventListener('change',refreshBtns);refreshBtns();
 function selected(){return NOTES.filter(n=>$('cb_'+n).checked);}
 function refreshBtns(){guessWrap.innerHTML='';selected().forEach(n=>{const b=document.createElement('button');b.textContent=n.replace('s','♯');b.className='note-btn';b.onclick=()=>noteClick(b,n);guessWrap.appendChild(b);});}
 
-// state vars
+// state
 let previewMaster=null,previewNodes=[],quizMaster=null,quizNodes=[],current=null,startTime=0;
-let hits=0,tries=0,streak=0,best=0,rts=[],tick,timeout,autoTimer=null,cycleSinceCleanser=0;
+let hits=0,tries=0,streak=0,best=0,rts=[],tick,timeout,nextTimer=null,cycleSinceCleanser=0;
 
 // preview
-function stopPreview(){if(!previewMaster)return;previewMaster.gain.exponentialRampToValueAtTime(0,ac().currentTime+.05);setTimeout(()=>previewNodes.forEach(o=>o.disconnect()),120);previewMaster=null;previewNodes=[];document.querySelectorAll('.note-btn.active').forEach(b=>b.classList.remove('active'));}
-function startPreview(nt,b){stopPreview();const ctx=ac();previewMaster=ctx.createGain();previewMaster.gain.value=.4;previewMaster.connect(ctx.destination);const base=hz(NOTES.indexOf(nt));
- for(let k=-5;k<=5;k++){const f=base*2**k;if(f<40||f>2e4)continue;const o=ctx.createOscillator();o.type='sine';o.frequency.value=f;const g=ctx.createGain();g.gain.value=Math.exp(-.5*(Math.log2(f/440)/.33)**2);o.connect(g).connect(previewMaster);o.start();previewNodes.push(o);}b.classList.add('active');}
+function stopPreview(){if(!previewMaster)return;previewMaster.gain.setTargetAtTime(0,ac().currentTime,.05);setTimeout(()=>previewNodes.forEach(o=>o.disconnect()),120);previewMaster=null;previewNodes=[];document.querySelectorAll('.note-btn.active').forEach(b=>b.classList.remove('active'));}
+function startPreview(nt,btn){stopPreview();const ctx=ac();previewMaster=ctx.createGain();previewMaster.gain.value=.4;previewMaster.connect(ctx.destination);const base=hz(NOTES.indexOf(nt));for(let k=-5;k<=5;k++){const f=base*2**k;if(f<40||f>2e4)continue;const o=ctx.createOscillator();o.type='sine';o.frequency.value=f;const g=ctx.createGain();g.gain.value=Math.exp(-.5*(Math.log2(f/440)/.33)**2);o.connect(g).connect(previewMaster);o.start();previewNodes.push(o);}btn.classList.add('active');}
 
-// cleanser generators
+// cleanser
 function noise(kind,d){const ctx=ac(),b=ctx.createBuffer(1,ctx.sampleRate*d,ctx.sampleRate),arr=b.getChannelData(0);for(let i=0;i<arr.length;i++){let v=Math.random()*2-1;if(kind==='pink')v/=Math.sqrt(i+1);arr[i]=v*.25;}const s=ctx.createBufferSource();s.buffer=b;s.connect(ctx.destination);s.start();}
 function cloud(d){const ctx=ac(),g=ctx.createGain();g.gain.value=.35;g.connect(ctx.destination);const t0=ctx.currentTime;g.gain.setValueAtTime(0,t0);g.gain.linearRampToValueAtTime(.35,t0+.005);g.gain.setValueAtTime(.35,t0+d-.05);g.gain.linearRampToValueAtTime(0,t0+d);for(let i=0;i<14;i++){const n=Math.floor(Math.random()*12),c=Math.random()*40-20;const f=hz(n)*2**(c/1200);const o=ctx.createOscillator();o.type='sine';o.frequency.value=f;o.connect(g);o.start(t0);o.stop(t0+d);}}
 function atonalSeries(total){const ctx=ac(),g=ctx.createGain();g.gain.value=.35;g.connect(ctx.destination);let t=ctx.currentTime;const rhythm=[.25,.5,.75,1];while(t<ctx.currentTime+total){const dur=rhythm[Math.floor(Math.random()*rhythm.length)];const f=hz(Math.floor(Math.random()*12));const o=ctx.createOscillator();o.type='sine';o.frequency.value=f;o.connect(g);o.start(t);o.stop(t+dur);t+=dur;}}
 
-function runCleanser(){const kind=$('cleanser').value,d=parseFloat($('clDur').value)||1;$('status').textContent='⏳ cleanser…';let ms=0;switch(kind){case'cloud':cloud(d);ms=d*1000;break;case'atonal':atonalSeries(d);ms=d*1000;break;case'white':noise('white',d);ms=d*1000;break;case'pink':noise('pink',d);ms=d*1000;break;case'gap':ms=d*1000;break;}setTimeout(()=>$('status').textContent='',ms);return ms;}
+function runCleanser(){const kind=$('cleanser').value,d=parseFloat($('clDur').value)||1;let ms=0;if(kind!=='none')$('status').textContent='⏳ cleanser…';switch(kind){case'cloud':cloud(d);ms=d*1000;break;case'atonal':atonalSeries(d);ms=d*1000;break;case'white':noise('white',d);ms=d*1000;break;case'pink':noise('pink',d);ms=d*1000;break;case'gap':ms=d*1000;break;} if(kind!=='none')setTimeout(()=>$('status').textContent='',ms);return ms;}
 
-// quiz
+// quiz helpers
 function stopQuiz(){if(!quizMaster)return;quizMaster.gain.setTargetAtTime(0,ac().currentTime,.05);setTimeout(()=>quizNodes.forEach(o=>o.disconnect()),120);quizMaster=null;quizNodes=[];}
-function clearTimers(){clearTimeout(timeout);clearInterval(tick);clearTimeout(autoTimer);autoTimer=null;$('timer').textContent='';}
-function playQuiz(){stopPreview();clearTimers();stopQuiz();const pool=[];const biasVal=parseInt($('bias').value);selected().forEach(n=>{for(let i=0;i<(n==='C'?biasVal:1);i++)pool.push(n);});if(!pool.length){alert('Select notes');return;}current=pool[Math.floor(Math.random()*pool.length)];
- const ctx=ac(),dur=parseFloat($('dur').value),wave=$('timbre').value;if(dur===0)$('status').textContent='∞ Drone';else $('status').textContent='';quizMaster=ctx.createGain();quizMaster.connect(ctx.destination);if(dur>0){quizMaster.gain.setValueAtTime(0,ctx.currentTime);quizMaster.gain.linearRampToValueAtTime(.5,ctx.currentTime+.05);quizMaster.gain.setValueAtTime(.5,ctx.currentTime+dur-.05);quizMaster.gain.linearRampToValueAtTime(0,ctx.currentTime+dur);}else quizMaster.gain.value=.5;const base=hz(NOTES.indexOf(current));
- for(let k=-5;k<=5;k++){const f=base*2**k;if(f<40||f>2e4)continue;const o=ctx.createOscillator();o.type=wave.toLowerCase();o.frequency.value=f;const g=ctx.createGain();g.gain.value=Math.exp(-.5*(Math.log2(f/440)/.33)**2);o.connect(g).connect(quizMaster);o.start();if(dur>0)o.stop(ctx.currentTime+dur);quizNodes.push(o);}quizNodes.push(quizMaster);
- startTime=performance.now();$('status').textContent+='';const lim=parseInt($('limit').value);if(lim){let rem=lim;$('timer').textContent=lim.toFixed(1)+' s';tick=setInterval(()=>{rem-=.1;$('timer').textContent=rem.toFixed(1)+' s';},100);timeout=setTimeout(()=>handleSubmit(true,null),lim*1000);}
-}
+function clearTimers(){clearTimeout(timeout);clearInterval(tick);clearTimeout(nextTimer);nextTimer=null;$('timer')&&($('timer').textContent='');}
+function playQuiz(){stopPreview();clearTimers();stopQuiz();const pool=[];const bias=parseInt($('bias').value);selected().forEach(n=>{for(let i=0;i<(n==='C'?bias:1);i++)pool.push(n);});if(!pool.length){alert('Select notes');return;}current=pool[Math.floor(Math.random()*pool.length)];
+ const ctx=ac(),dur=parseFloat($('dur').value),wave=$('timbre').value;quizMaster=ctx.createGain();quizMaster.connect(ctx.destination);if(dur>0){quizMaster.gain.setValueAtTime(0,ctx.currentTime);quizMaster.gain.linearRampToValueAtTime(.5,ctx.currentTime+.05);quizMaster.gain.setValueAtTime(.5,ctx.currentTime+dur-.05);quizMaster.gain.linearRampToValueAtTime(0,ctx.currentTime+dur);}else quizMaster.gain.value=.5;const base=hz(NOTES.indexOf(current));for(let k=-5;k<=5;k++){const f=base*2**k;if(f<40||f>2e4)continue;const o=ctx.createOscillator();o.type=wave.toLowerCase();o.frequency.value=f;const g=ctx.createGain();g.gain.value=Math.exp(-.5*(Math.log2(f/440)/.33)**2);o.connect(g).connect(quizMaster);o.start();if(dur>0)o.stop(ctx.currentTime+dur);quizNodes.push(o);}quizNodes.push(quizMaster);startTime=performance.now();const lim=parseInt($('limit').value);if(lim){let rem=lim;$('status').textContent=`${rem.toFixed(0)}…`;tick=setInterval(()=>{rem--;$('status').textContent=`${rem}…`;},1000);timeout=setTimeout(()=>handleSubmit(true,null),lim*1000);}else $('status').textContent='';}
+
 function updateStats(){const acc=hits/tries*100||0,avg=rts.reduce((a,b)=>a+b,0)/rts.length||0;$('stats').textContent=`Attempts ${tries} • Acc ${acc.toFixed(1)}% • Streak ${streak} (best ${best}) • Avg ${(avg).toFixed(2)} s`;}
-function handleSubmit(auto,note){if(current===null)return;clearTimers();stopQuiz();const rt=(performance.now()-startTime)/1000;rts.push(rt);tries++;const ok=!auto&&note===current;if(ok){hits++;streak++;best=Math.max(best,streak);$('status').textContent=`✅ ${note} (${rt.toFixed(2)} s)`;}else{streak=0;$('status').textContent=auto?`⌛ Time – ${current}`:`❌ ${current} (${rt.toFixed(2)} s)`;}current=null;updateStats();let pause=0;const every=parseInt($('clEvery').value)||1;if(++cycleSinceCleanser>=every){pause=runCleanser();cycleSinceCleanser=0;}if($('auto').checked)autoTimer=setTimeout(playQuiz,pause+500);}
-function noteClick(btn,n){current?handleSubmit(false,n):btn.classList.contains('active')?stopPreview():startPreview(n,btn);}
+
+function readyCountdown(cb){let rem=5;$('status').textContent='Ready… '+rem;const id=setInterval(()=>{rem--;if(rem<=0){clearInterval(id);$('status').textContent='';cb();}else $('status').textContent='Ready… '+rem;},1000);}
+
+function handleSubmit(auto,note){if(current===null)return;clearTimers();stopQuiz();const rt=(performance.now()-startTime)/1000;rts.push(rt);tries++;const ok=!auto&&note===current;if(ok){hits++;streak++;best=Math.max(best,streak);$('status').textContent=`✅ ${note} (${rt.toFixed(2)} s)`;}else{streak=0;$('status').textContent=auto?`⌛ Time – ${current}`:`❌ ${current} (${rt.toFixed(2)} s)`;}current=null;updateStats();let pause=0;const every=parseInt($('clEvery').value)||1;if(++cycleSinceCleanser>=every){pause=runCleanser();cycleSinceCleanser=0;}if($('auto').checked){nextTimer=setTimeout(()=>readyCountdown(playQuiz),pause+200);} }
+
+function noteClick(btn,note){current?handleSubmit(false,note):btn.classList.contains('active')?stopPreview():startPreview(note,btn);}
 $('playBtn').onclick=playQuiz;
 </script>
 </body></html>
