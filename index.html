@@ -1,1 +1,93 @@
-placeholder
+
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Shepard Ear Trainer</title>
+<style>
+:root{--blue:#2563eb;--dk:#1e40af;--bg:#f8fafc}
+body{font-family:sans-serif;background:var(--bg);display:flex;flex-direction:column;align-items:center;gap:1rem;padding:1rem}
+.row{display:flex;gap:.6rem;flex-wrap:wrap;justify-content:center}
+select,button,input[type=range],input[type=number]{font-size:.9rem;border-radius:8px;padding:.45rem .8rem}
+select,input[type=number]{border:1px solid #cbd5e1}
+.ctrl{background:var(--blue);color:#fff;border:none;font-weight:600;cursor:pointer}
+.ctrl:active{background:var(--dk)}
+.note-btn{background:#e2e8f0;border:none;border-radius:7px;padding:.5rem .8rem;font-size:.9rem;cursor:pointer}
+.note-btn.active{background:var(--blue);color:#fff}
+.wrap{display:flex;gap:.45rem;flex-wrap:wrap;justify-content:center}
+#timer{font-weight:700;color:var(--blue)}#result{font-weight:600;min-height:1.3em}#stats{font-size:.8rem;text-align:center}
+</style>
+<link rel="manifest" href="manifest.json">
+<script>if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');</script>
+</head><body>
+<h2>Shepard Ear Trainer (v5)</h2>
+
+<!-- tone & cleanser controls -->
+<div class="row">
+<label>Timbre <select id="timbre"><option>Sine</option><option>Triangle</option><option>Saw</option></select></label>
+<label>Dur <select id="dur"></select></label>
+<label>Countdown <select id="limit"></select></label>
+</div>
+
+<div class="row">
+<label>Cleanser <select id="cleanser">
+ <option value="none">None</option>
+ <option value="cloud">12‑tone cloud</option>
+ <option value="atonal">Atonal series</option>
+ <option value="white">White noise</option>
+ <option value="pink">Pink noise</option>
+ <option value="gap">Silent gap</option>
+</select></label>
+<label>Duration <input id="clDur" type="number" min="0.2" step="0.2" value="1"> s</label>
+<label>Every <input id="clEvery" type="number" min="1" value="1" style="width:3em"> cycles</label>
+</div>
+
+<div class="row">
+<label>C weight <input id="bias" type="range" min="1" max="10" value="5"></label><span id="biasVal">5×</span>
+<label><input id="auto" type="checkbox"> Autoplay</label>
+</div>
+
+<div id="notesWrap" class="wrap"></div>
+<button id="playBtn" class="ctrl">▶︎ Play Quiz Tone</button>
+<div id="guessWrap" class="wrap"></div>
+
+<div id="timer"></div><div id="result"></div><div id="stats"></div>
+
+<script>
+const NOTES=["C","Cs","D","Ds","E","F","Fs","G","Gs","A","As","B"];
+const $=id=>document.getElementById(id); // shortcut
+let ctx;const ac=()=>ctx||(ctx=new (window.AudioContext||window.webkitAudioContext)());
+function hz(i){return 261.625565*2**(i/12);}
+[1,2,3,5,8,10,15,30,0].forEach(v=>$('dur').add(new Option(v? v+' s':'∞',v)));
+$('dur').value=3;$('limit').add(new Option('None',0,true,true));for(let i=1;i<=10;i++)$('limit').add(new Option(i+' s',i));
+$('bias').oninput=()=>$('biasVal').textContent=$('bias').value+'×';
+
+// note buttons
+const notesWrap=$('notesWrap'),guessWrap=$('guessWrap');
+NOTES.forEach(n=>notesWrap.insertAdjacentHTML('beforeend',`<label><input id='cb_${n}' type='checkbox' checked> ${n.replace('s','♯')}</label>`));
+notesWrap.addEventListener('change',refreshButtons);refreshButtons();
+function selected(){return NOTES.filter(n=>$('cb_'+n).checked);}
+function refreshButtons(){guessWrap.innerHTML='';selected().forEach(n=>{const b=document.createElement('button');b.textContent=n.replace('s','♯');b.className='note-btn';b.onclick=()=>noteClick(b,n);guessWrap.appendChild(b);});}
+
+// state
+let previewMaster=null,previewNodes=[],quizMaster=null,quizNodes=[],current=null,startTime=0;
+let hits=0,tries=0,streak=0,best=0,rts=[],tick,timeout,autoTimer=null,cycleSinceCleanser=0;
+
+// preview helpers
+function stopPreview(){if(!previewMaster)return;previewMaster.gain.setTargetAtTime(0,ac().currentTime,.05);setTimeout(()=>previewNodes.forEach(o=>o.disconnect()),160);previewMaster=null;previewNodes=[];document.querySelectorAll('.note-btn.active').forEach(b=>b.classList.remove('active'));}
+function startPreview(note,btn){stopPreview();const ctx=ac();previewMaster=ctx.createGain();previewMaster.gain.value=.4;previewMaster.connect(ctx.destination);const base=hz(NOTES.indexOf(note));for(let k=-5;k<=5;k++){const f=base*2**k;if(f<40||f>2e4)continue;const o=ctx.createOscillator();o.type='sine';o.frequency.value=f;const g=ctx.createGain();g.gain.value=Math.exp(-.5*(Math.log2(f/440)/.33)**2);o.connect(g).connect(previewMaster);o.start();previewNodes.push(o);}btn.classList.add('active');}
+
+// cleanser generators
+function noise(type,d){const ctx=ac(),b=ctx.createBuffer(1,ctx.sampleRate*d,ctx.sampleRate),arr=b.getChannelData(0);for(let i=0;i<arr.length;i++){let v=Math.random()*2-1;if(type==='pink')v/=Math.sqrt(i+1);arr[i]=v*.25;}const s=ctx.createBufferSource();s.buffer=b;s.connect(ctx.destination);s.start();}
+function cloud(d){const ctx=ac(),g=ctx.createGain();g.gain.value=.35;g.connect(ctx.destination);const t0=ctx.currentTime;g.gain.setValueAtTime(0,t0);g.gain.linearRampToValueAtTime(.35,t0+.005);g.gain.setValueAtTime(.35,t0+d-.05);g.gain.linearRampToValueAtTime(0,t0+d);for(let i=0;i<14;i++){const n=Math.floor(Math.random()*12),c=Math.random()*40-20;const f=hz(n)*2**(c/1200);const o=ctx.createOscillator();o.type='sine';o.frequency.value=f;o.connect(g);o.start(t0);o.stop(t0+d);}}
+function atonalSeries(d){const ctx=ac(),g=ctx.createGain();g.gain.value=.35;g.connect(ctx.destination);let t=ctx.currentTime;while(t<ctx.currentTime+d){const f=hz(Math.floor(Math.random()*12));const seg=1+Math.random();const o=ctx.createOscillator();o.type='sine';o.frequency.value=f;o.connect(g);o.start(t);o.stop(t+seg);t+=seg;}}
+function runCleanser(){const type=$('cleanser').value,d=parseFloat($('clDur').value)||1;switch(type){case'cloud':cloud(d);break;case'atonal':atonalSeries(d);break;case'white':noise('white',d);break;case'pink':noise('pink',d);break;}return type==='none'?0:d*1000;}
+
+// quiz
+function stopQuiz(){if(!quizMaster)return;quizMaster.gain.setTargetAtTime(0,ac().currentTime,.05);setTimeout(()=>quizNodes.forEach(o=>o.disconnect()),150);quizMaster=null;quizNodes=[];}
+function clearTimers(){clearTimeout(timeout);clearInterval(tick);clearTimeout(autoTimer);autoTimer=null;$('timer').textContent='';}
+function playQuiz(){stopPreview();clearTimers();stopQuiz();const pool=[];const bias=parseInt($('bias').value);selected().forEach(n=>{for(let i=0;i<(n==='C'?bias:1);i++)pool.push(n);});if(!pool.length){alert('Select notes');return;}current=pool[Math.floor(Math.random()*pool.length)];const ctx=ac(),dur=parseFloat($('dur').value),wave=$('timbre').value;quizMaster=ctx.createGain();quizMaster.connect(ctx.destination);if(dur>0){quizMaster.gain.setValueAtTime(0,ctx.currentTime);quizMaster.gain.linearRampToValueAtTime(.5,ctx.currentTime+.05);quizMaster.gain.setValueAtTime(.5,ctx.currentTime+dur-.05);quizMaster.gain.linearRampToValueAtTime(0,ctx.currentTime+dur);}else quizMaster.gain.value=.5;const base=hz(NOTES.indexOf(current));for(let k=-5;k<=5;k++){const f=base*2**k;if(f<40||f>2e4)continue;const o=ctx.createOscillator();o.type=wave.toLowerCase();o.frequency.value=f;const g=ctx.createGain();g.gain.value=Math.exp(-.5*(Math.log2(f/440)/.33)**2);o.connect(g).connect(quizMaster);o.start();if(dur>0)o.stop(ctx.currentTime+dur);quizNodes.push(o);}quizNodes.push(quizMaster);startTime=performance.now();$('result').textContent='';const lim=parseInt($('limit').value);if(lim){let rem=lim;$('timer').textContent=lim.toFixed(1)+' s';tick=setInterval(()=>{rem-=.1;$('timer').textContent=rem.toFixed(1)+' s';},100);timeout=setTimeout(()=>handleSubmit(true,null),lim*1000);}}
+function updateStats(){const acc=hits/tries*100||0,avg=rts.reduce((a,b)=>a+b,0)/rts.length||0;$('stats').textContent=`Attempts ${tries} • Acc ${acc.toFixed(1)}% • Streak ${streak} (best ${best}) • Avg ${avg.toFixed(2)} s`;}
+function handleSubmit(auto,note){if(current===null)return;clearTimers();stopQuiz();const rt=(performance.now()-startTime)/1000;rts.push(rt);tries++;const ok=!auto&&note===current;if(ok){hits++;streak++;best=Math.max(best,streak);$('result').textContent=`✅ ${note} (${rt.toFixed(2)} s)`;}else{streak=0;$('result').textContent=auto?`⌛ Time – ${current}`:`❌ ${current} (${rt.toFixed(2)} s)`;}current=null;updateStats();let pause=0;const every=parseInt($('clEvery').value)||1;if(++cycleSinceCleanser>=every){pause=runCleanser();cycleSinceCleanser=0;}if($('auto').checked)autoTimer=setTimeout(playQuiz,pause+500);}
+function noteClick(btn,note){current?handleSubmit(false,note):btn.classList.contains('active')?stopPreview():startPreview(note,btn);}
+$('playBtn').onclick=playQuiz;
+</script>
+</body></html>
