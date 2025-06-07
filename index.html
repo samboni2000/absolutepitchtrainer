@@ -78,6 +78,7 @@ function refreshBtns(){guessWrap.innerHTML='';selected().forEach(n=>{const b=doc
 // state
 let previewMaster=null,previewNodes=[],quizMaster=null,quizNodes=[],current=null,startTime=0;
 let hits=0,tries=0,streak=0,best=0,rts=[],timerID,readyID,cleanserRan=false;
+let cycleSinceCleanser = 0;
 
 // preview
 function stopPreview(){if(!previewMaster)return;previewMaster.gain.setTargetAtTime(0,ac().currentTime,.05);setTimeout(()=>previewNodes.forEach(o=>o.disconnect()),120);previewMaster=null;previewNodes=[];document.querySelectorAll('.note-btn.active').forEach(b=>b.classList.remove('active'));}
