@@ -78,8 +78,7 @@ function refreshBtns(){guessWrap.innerHTML='';selected().forEach(n=>{const b=doc
 // state
 let previewMaster,previewNodes,quizMaster,quizNodes,current,startTime;
 let hits=0,tries=0,streak=0,best=0,rts=[];
-let countdownID,readyID,answerTimeout,cycleSinceCleanser=0;
-
+let countdownID,readyID,answerTimeout,
 // preview
 function stopPreview(){if(!previewMaster)return;previewMaster.gain.setTargetAtTime(0,ac().currentTime,.05);setTimeout(()=>previewNodes.forEach(o=>o.disconnect()),120);previewMaster=null;previewNodes=[];document.querySelectorAll('.note-btn.active').forEach(b=>b.classList.remove('active'));}
 function startPreview(nt,btn){stopPreview();const ctx=ac();previewMaster=ctx.createGain();previewMaster.gain.value=.4;previewMaster.connect(ctx.destination);const base=hz(NOTES.indexOf(nt));for(let k=-5;k<=5;k++){const f=base*2**k;if(f<40||f>2e4)continue;const o=ctx.createOscillator();o.type='sine';o.frequency.value=f;const g=ctx.createGain();g.gain.value=Math.exp(-.5*(Math.log2(f/440)/.33)**2);o.connect(g).connect(previewMaster);o.start();previewNodes.push(o);}btn.classList.add('active');}
@@ -117,7 +116,8 @@ function updateStats(){const acc=hits/tries*100||0,avg=rts.reduce((a,b)=>a+b,0)/
 function readyCountdown(){let rem=5;$('status').textContent='Ready… '+rem;readyID=setInterval(()=>{rem--;if(rem<=0){clearInterval(readyID);$('status').textContent='';playQuiz();}else $('status').textContent='Ready… '+rem;},1000);}
 
 function handleSubmit(auto,note){clearTimers();stopQuiz();const rt=(performance.now()-startTime)/1000;rts.push(rt);tries++;let ok=!auto&&note===current;if(ok){hits++;streak++;best=Math.max(best,streak);showAnswer(`✅ ${note} (${rt.toFixed(2)} s)`);}else{streak=0;showAnswer(auto?`⌛ Time – ${current}`:`❌ ${current} (${rt.toFixed(2)} s)`);}current=null;updateStats();
- cycleSinceCleanser++;let pause=0;let cleanserDue=false;const every=parseInt($('clEvery').value)||1;if(cycleSinceCleanser>=every){pause=runCleanser();cycleSinceCleanser=0;cleanserDue=true;}
+ cycleSinceCleanser++;let pause=0;let cleanserDue=false;const every=parseInt($('clEvery').value)||1;if(cycleSinceCleanser>=every){pause=runCleanser();
+cleanserDue=true;}
  if($('auto').checked){if(cleanserDue)readyID=setTimeout(readyCountdown,pause+200);else setTimeout(playQuiz,500);} }
 
 function noteClick(btn,note){if(current){handleSubmit(false,note);}else{if(!$('previewToggle').checked)return;btn.classList.contains('active')?stopPreview():startPreview(note,btn);} }
