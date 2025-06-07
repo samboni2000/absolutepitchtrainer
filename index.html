@@ -16,9 +16,8 @@ input[type=range]{flex:1;margin-left:.4rem}
 .ctrl:active{background:var(--dk)}
 .note-btn{background:#e2e8f0;border:none;border-radius:7px;padding:.4rem .75rem;font-size:.85rem;margin:.15rem}
 .note-btn.active{background:var(--blue);color:#fff}
-.notes-grid{display:grid;grid-template-columns:repeat(6,auto);gap:.25rem;justify-content:center;margin-top:.4rem}
-#status{min-height:1.2em;font-weight:600;text-align:center;margin-top:.3rem}
-#resultLine{min-height:1.2em;font-weight:600;text-align:center}
+.notes-grid{display:grid;grid-template-columns:repeat(6,auto);gap:.25rem;justify-content:center;margin-top:.3rem}
+.info{min-height:1.2em;font-weight:600;text-align:center;margin-top:.2rem}
 #stats{font-size:.75rem;text-align:center}
 </style>
 <link rel="manifest" href="manifest.json"><script>if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js');}</script>
@@ -52,8 +51,8 @@ input[type=range]{flex:1;margin-left:.4rem}
 <button id="playBtn" class="ctrl">▶︎ Play Quiz Tone</button>
 <div id="guessWrap" class="notes-grid"></div>
 
-<div id="status"></div>
-<div id="resultLine"></div>
+<div id="status" class="info"></div>
+<div id="answer" class="info"></div>
 <div id="stats"></div>
 
 <script>
@@ -63,8 +62,7 @@ let ctx;const ac=()=>ctx||(ctx=new (window.AudioContext||window.webkitAudioConte
 
 // populate selects
 [2,3,5,8,10,15,30].forEach(v=>$('dur').add(new Option(v+' s',v)));
-[3,5,8,10,15,20,30].forEach(v=>$('limit').add(new Option(v+' s',v)));$('limit').add(new Option('None',0));
-$('limit').value=3;
+[3,5,8,10,15,20,30].forEach(v=>$('limit').add(new Option(v+' s',v)));$('limit').add(new Option('None',0));$('limit').value=3;
 $('bias').oninput=()=>$('biasVal').textContent=$('bias').value+'×';
 
 // note grid
@@ -76,9 +74,9 @@ function selected(){return NOTES.filter(n=>$('cb_'+n).checked);}
 function refreshBtns(){guessWrap.innerHTML='';selected().forEach(n=>{const b=document.createElement('button');b.textContent=n.replace('s','♯');b.className='note-btn';b.onclick=()=>noteClick(b,n);guessWrap.appendChild(b);});}
 
 // state
-let previewMaster=null,previewNodes=[],quizMaster=null,quizNodes=[],current=null,startTime=0;
-let hits=0,tries=0,streak=0,best=0,rts=[],timerID,readyID,cleanserRan=false;
-let cycleSinceCleanser = 0;
+let previewMaster,previewNodes,quizMaster,quizNodes,current,startTime;
+let hits=0,tries=0,streak=0,best=0,rts=[];
+let countdownID,readyID,answerTimeout,cycleSinceCleanser=0;
 
 // preview
 function stopPreview(){if(!previewMaster)return;previewMaster.gain.setTargetAtTime(0,ac().currentTime,.05);setTimeout(()=>previewNodes.forEach(o=>o.disconnect()),120);previewMaster=null;previewNodes=[];document.querySelectorAll('.note-btn.active').forEach(b=>b.classList.remove('active'));}
@@ -89,25 +87,29 @@ function noise(kind,d){const ctx=ac(),b=ctx.createBuffer(1,ctx.sampleRate*d,ctx.
 function cloud(d){const ctx=ac(),g=ctx.createGain();g.gain.value=.35;g.connect(ctx.destination);const t0=ctx.currentTime;g.gain.setValueAtTime(0,t0);g.gain.linearRampToValueAtTime(.35,t0+.005);g.gain.setValueAtTime(.35,t0+d-.05);g.gain.linearRampToValueAtTime(0,t0+d);for(let i=0;i<14;i++){const n=Math.floor(Math.random()*12),c=Math.random()*40-20;const f=hz(n)*2**(c/1200);const o=ctx.createOscillator();o.type='sine';o.frequency.value=f;o.connect(g);o.start(t0);o.stop(t0+d);}}
 function atonalSeries(total){const ctx=ac(),g=ctx.createGain();g.gain.value=.35;g.connect(ctx.destination);let t=ctx.currentTime;const rhythm=[.25,.5,.75,1];while(t<ctx.currentTime+total){const dur=rhythm[Math.floor(Math.random()*rhythm.length)];const f=hz(Math.floor(Math.random()*12));const o=ctx.createOscillator();o.type='sine';o.frequency.value=f;o.connect(g);o.start(t);o.stop(t+dur);t+=dur;}}
 
-function runCleanser(){const kind=$('cleanser').value,d=parseFloat($('clDur').value)||1;let ms=0;if(kind!=='none'){$('status').textContent='⏳ cleanser…';switch(kind){case'cloud':cloud(d);break;case'atonal':atonalSeries(d);break;case'white':noise('white',d);break;case'pink':noise('pink',d);break;}ms=d*1000;}if(kind==='gap')ms=d*1000;if(ms) setTimeout(()=>$('status').textContent='',ms);return ms;}
+function runCleanser(){const kind=$('cleanser').value,d=parseFloat($('clDur').value)||1;let ms=0;if(kind!=='none'){$('status').textContent='⏳ cleanser';switch(kind){case'cloud':cloud(d);break;case'atonal':atonalSeries(d);break;case'white':noise('white',d);break;case'pink':noise('pink',d);break;}ms=d*1000;}if(kind==='gap')ms=d*1000;setTimeout(()=>$('status').textContent='',ms);return ms;}
 
-// quiz
-function resetTimers(){clearTimeout(timerID);clearTimeout(readyID);}
-function stopQuiz(){if(!quizMaster)return;quizMaster.gain.setTargetAtTime(0,ac().currentTime,.05);setTimeout(()=>quizNodes.forEach(o=>o.disconnect()),120);quizMaster=null;quizNodes=[];}
+// helpers
+function clearTimers(){clearTimeout(countdownID);clearTimeout(readyID);clearTimeout(answerTimeout);}
+function showAnswer(txt){$('answer').textContent=txt;clearTimeout(answerTimeout);answerTimeout=setTimeout(()=>$('answer').textContent='',3000);}
 
-function playQuiz(){stopPreview();resetTimers();stopQuiz();$('resultLine').textContent='';const pool=[];const bias=parseInt($('bias').value);selected().forEach(n=>{for(let i=0;i<(n==='C'?bias:1);i++)pool.push(n);});if(!pool.length){alert('Select notes');return;}current=pool[Math.floor(Math.random()*pool.length)];
- $('status').textContent='🎵'; setTimeout(()=> $('status').textContent='', dur*1000);
+// quiz flow
+function playQuiz(){stopPreview();clearTimers();stopQuiz();$('answer').textContent='';const pool=[];const bias=parseInt($('bias').value);selected().forEach(n=>{for(let i=0;i<(n==='C'?bias:1);i++)pool.push(n);});if(!pool.length){alert('Select notes');return;}current=pool[Math.floor(Math.random()*pool.length)];
  const ctx=ac(),dur=parseFloat($('dur').value),wave=$('timbre').value;quizMaster=ctx.createGain();quizMaster.connect(ctx.destination);if(dur>0){quizMaster.gain.setValueAtTime(0,ctx.currentTime);quizMaster.gain.linearRampToValueAtTime(.5,ctx.currentTime+.05);quizMaster.gain.setValueAtTime(.5,ctx.currentTime+dur-.05);quizMaster.gain.linearRampToValueAtTime(0,ctx.currentTime+dur);}else quizMaster.gain.value=.5;const base=hz(NOTES.indexOf(current));for(let k=-5;k<=5;k++){const f=base*2**k;if(f<40||f>2e4)continue;const o=ctx.createOscillator();o.type=wave.toLowerCase();o.frequency.value=f;const g=ctx.createGain();g.gain.value=Math.exp(-.5*(Math.log2(f/440)/.33)**2);o.connect(g).connect(quizMaster);o.start();if(dur>0)o.stop(ctx.currentTime+dur);quizNodes.push(o);}quizNodes.push(quizMaster);
- startTime=performance.now();$('status').textContent='';
- const lim=parseInt($('limit').value);if(lim){timerID=setTimeout(()=>startCountdown(lim),dur*1000);} }
+ startTime=performance.now();$('status').textContent='🎵 '+current;
+ const lim=parseInt($('limit').value);if(lim){countdownID=setTimeout(()=>startCountdown(lim),dur*1000);} }
 
-function startCountdown(sec){let rem=sec;$('status').textContent=rem;timerID=setInterval(()=>{rem--;$('status').textContent=rem;if(rem<=0){clearInterval(timerID);handleSubmit(true,null);}},1000);}
+function startCountdown(sec){let rem=sec;$('status').textContent=rem;countdownID=setInterval(()=>{rem--;$('status').textContent=rem;if(rem<=0){clearInterval(countdownID);handleSubmit(true,null);}},1000);}
+
+function stopQuiz(){if(!quizMaster)return;quizMaster.gain.setTargetAtTime(0,ac().currentTime,.05);setTimeout(()=>quizNodes.forEach(o=>o.disconnect()),120);quizMaster=null;quizNodes=[];}
 
 function updateStats(){const acc=hits/tries*100||0,avg=rts.reduce((a,b)=>a+b,0)/rts.length||0;$('stats').textContent=`Attempts ${tries} • Acc ${acc.toFixed(1)}% • Best ${best} • Avg ${(avg).toFixed(2)} s`; }
 
 function readyCountdown(){let rem=5;$('status').textContent='Ready… '+rem;readyID=setInterval(()=>{rem--;if(rem<=0){clearInterval(readyID);$('status').textContent='';playQuiz();}else $('status').textContent='Ready… '+rem;},1000);}
 
-function handleSubmit(auto,note){resetTimers();stopQuiz();const rt=(performance.now()-startTime)/1000;rts.push(rt);tries++;let ok=!auto&&note===current;if(ok){hits++;streak++;best=Math.max(best,streak);$('resultLine').textContent=`✅ ${note} (${rt.toFixed(2)} s)`;}else{streak=0;$('resultLine').textContent=auto?`⌛ Time – ${current}`:`❌ ${current} (${rt.toFixed(2)} s)`;}current=null;updateStats();let pause=0;cleanserRan=false;const every=parseInt($('clEvery').value)||1;if(++cycleSinceCleanser>=every){pause=runCleanser();cycleSinceCleanser=0;cleanserRan=true;}if($('auto').checked){if(cleanserRan)readyID=setTimeout(readyCountdown,pause+200);else setTimeout(playQuiz,200);} }
+function handleSubmit(auto,note){clearTimers();stopQuiz();const rt=(performance.now()-startTime)/1000;rts.push(rt);tries++;let ok=!auto&&note===current;if(ok){hits++;streak++;best=Math.max(best,streak);showAnswer(`✅ ${note} (${rt.toFixed(2)} s)`);}else{streak=0;showAnswer(auto?`⌛ Time – ${current}`:`❌ ${current} (${rt.toFixed(2)} s)`);}current=null;updateStats();
+ cycleSinceCleanser++;let pause=0;let cleanserDue=false;const every=parseInt($('clEvery').value)||1;if(cycleSinceCleanser>=every){pause=runCleanser();cycleSinceCleanser=0;cleanserDue=true;}
+ if($('auto').checked){if(cleanserDue)readyID=setTimeout(readyCountdown,pause+200);else setTimeout(playQuiz,500);} }
 
 function noteClick(btn,note){if(current){handleSubmit(false,note);}else{if(!$('previewToggle').checked)return;btn.classList.contains('active')?stopPreview():startPreview(note,btn);} }
 $('playBtn').onclick=playQuiz;
