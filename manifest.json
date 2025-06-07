@@ -1,11 +1,10 @@
 {
-  "name": "Shepard-Tone Ear-Trainer",
+  "name": "Shepard Ear Trainer",
   "short_name": "Shepard",
-  "description": "Absolute-pitch drills with Shepard tones & preview",
   "start_url": "index.html",
   "display": "standalone",
-  "theme_color": "#2563eb",
   "background_color": "#f8fafc",
+  "theme_color": "#2563eb",
   "icons": [
     {
       "src": "icons/192.png",
