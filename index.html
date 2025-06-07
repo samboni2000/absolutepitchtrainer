@@ -32,7 +32,6 @@ input[type=range]{flex:1;margin-left:.4rem}
 <label style="flex-direction:column;align-items:flex-start"><span>C weight <b id="biasVal">1×</b></span><input id="bias" type="range" min="1" max="10" value="1"></label>
 <label><input id="auto" type="checkbox" checked> Autoplay</label>
 <label><input id="previewToggle" type="checkbox" checked> Button preview</label>
-<label><span>Answer shown</span><input id="ansDur" type="number" min="1" value="5" style="width:3rem"> s</label>
 </fieldset>
 
 <fieldset><legend>Cleanser</legend>
@@ -45,7 +44,6 @@ input[type=range]{flex:1;margin-left:.4rem}
   <option value="gap">Silent gap</option></select></label>
 <label><span>Duration</span><input id="clDur" type="number" value="20" min="0.5" step="0.5" style="width:4rem"> s</label>
 <label><span>Every</span><input id="clEvery" type="number" value="10" min="1" style="width:3rem"> cycles</label>
-<label><span>Answer shown</span><input id="ansDur" type="number" min="1" value="5" style="width:3rem"> s</label>
 </fieldset>
 </div>
 
@@ -78,10 +76,13 @@ function refreshBtns(){guessWrap.innerHTML='';selected().forEach(n=>{const b=doc
 // state
 let previewMaster,previewNodes,quizMaster,quizNodes,current,startTime;
 let hits=0,tries=0,streak=0,best=0,rts=[];
-let countdownID,readyID,answerTimeout,
+let countdownID,readyID,answerTimeout,cycleSinceCleanser=0;
+
 // preview
 function stopPreview(){if(!previewMaster)return;previewMaster.gain.setTargetAtTime(0,ac().currentTime,.05);setTimeout(()=>previewNodes.forEach(o=>o.disconnect()),120);previewMaster=null;previewNodes=[];document.querySelectorAll('.note-btn.active').forEach(b=>b.classList.remove('active'));}
-function startPreview(nt,btn){stopPreview();const ctx=ac();previewMaster=ctx.createGain();previewMaster.gain.value=.4;previewMaster.connect(ctx.destination);const base=hz(NOTES.indexOf(nt));for(let k=-5;k<=5;k++){const f=base*2**k;if(f<40||f>2e4)continue;const o=ctx.createOscillator();o.type='sine';o.frequency.value=f;const g=ctx.createGain();g.gain.value=Math.exp(-.5*(Math.log2(f/440)/.33)**2);o.connect(g).connect(previewMaster);o.start();previewNodes.push(o);}btn.classList.add('active');}
+function startPreview(nt,btn){stopPreview();
+await ac().resume();
+const ctx=ac();previewMaster=ctx.createGain();previewMaster.gain.value=.4;previewMaster.connect(ctx.destination);const base=hz(NOTES.indexOf(nt));for(let k=-5;k<=5;k++){const f=base*2**k;if(f<40||f>2e4)continue;const o=ctx.createOscillator();o.type='sine';o.frequency.value=f;const g=ctx.createGain();g.gain.value=Math.exp(-.5*(Math.log2(f/440)/.33)**2);o.connect(g).connect(previewMaster);o.start();previewNodes.push(o);}btn.classList.add('active');}
 
 // cleanser
 function noise(kind,d){const ctx=ac(),b=ctx.createBuffer(1,ctx.sampleRate*d,ctx.sampleRate),a=b.getChannelData(0);for(let i=0;i<a.length;i++){let v=Math.random()*2-1;if(kind==='pink')v/=Math.sqrt(i+1);a[i]=v*.25;}const s=ctx.createBufferSource();s.buffer=b;s.connect(ctx.destination);s.start();}
@@ -92,17 +93,10 @@ function runCleanser(){const kind=$('cleanser').value,d=parseFloat($('clDur').va
 
 // helpers
 function clearTimers(){clearTimeout(countdownID);clearTimeout(readyID);clearTimeout(answerTimeout);}
-
-function showAnswer(txt){
-  $('#answer').textContent = txt;
-  clearTimeout(answerTimeout);
-  const keep = parseFloat($('#ansDur').value)||5;
-  answerTimeout = setTimeout(() => $('#answer').textContent='', keep*1000);
-}
-
+function showAnswer(txt){$('answer').textContent=txt;clearTimeout(answerTimeout);answerTimeout=setTimeout(()=>$('answer').textContent='',7000);}
 
 // quiz flow
-function playQuiz(){stopPreview();clearTimers();stopQuiz();$('answer').textContent='';const pool=[];const bias=parseInt($('bias').value);selected().forEach(n=>{for(let i=0;i<(n==='C'?bias:1);i++)pool.push(n);});if(!pool.length){alert('Select notes');return;}current=pool[Math.floor(Math.random()*pool.length)];
+async function playQuiz(){stopPreview();clearTimers();stopQuiz();$('answer').textContent='';const pool=[];const bias=parseInt($('bias').value);selected().forEach(n=>{for(let i=0;i<(n==='C'?bias:1);i++)pool.push(n);});if(!pool.length){alert('Select notes');return;}current=pool[Math.floor(Math.random()*pool.length)];
  const ctx=ac(),dur=parseFloat($('dur').value),wave=$('timbre').value;quizMaster=ctx.createGain();quizMaster.connect(ctx.destination);if(dur>0){quizMaster.gain.setValueAtTime(0,ctx.currentTime);quizMaster.gain.linearRampToValueAtTime(.5,ctx.currentTime+.05);quizMaster.gain.setValueAtTime(.5,ctx.currentTime+dur-.05);quizMaster.gain.linearRampToValueAtTime(0,ctx.currentTime+dur);}else quizMaster.gain.value=.5;const base=hz(NOTES.indexOf(current));for(let k=-5;k<=5;k++){const f=base*2**k;if(f<40||f>2e4)continue;const o=ctx.createOscillator();o.type=wave.toLowerCase();o.frequency.value=f;const g=ctx.createGain();g.gain.value=Math.exp(-.5*(Math.log2(f/440)/.33)**2);o.connect(g).connect(quizMaster);o.start();if(dur>0)o.stop(ctx.currentTime+dur);quizNodes.push(o);}quizNodes.push(quizMaster);
  startTime=performance.now();$('status').textContent='🎵 playing';
  const lim=parseInt($('limit').value);if(lim){countdownID=setTimeout(()=>startCountdown(lim),dur*1000);} }
@@ -116,8 +110,7 @@ function updateStats(){const acc=hits/tries*100||0,avg=rts.reduce((a,b)=>a+b,0)/
 function readyCountdown(){let rem=5;$('status').textContent='Ready… '+rem;readyID=setInterval(()=>{rem--;if(rem<=0){clearInterval(readyID);$('status').textContent='';playQuiz();}else $('status').textContent='Ready… '+rem;},1000);}
 
 function handleSubmit(auto,note){clearTimers();stopQuiz();const rt=(performance.now()-startTime)/1000;rts.push(rt);tries++;let ok=!auto&&note===current;if(ok){hits++;streak++;best=Math.max(best,streak);showAnswer(`✅ ${note} (${rt.toFixed(2)} s)`);}else{streak=0;showAnswer(auto?`⌛ Time – ${current}`:`❌ ${current} (${rt.toFixed(2)} s)`);}current=null;updateStats();
- cycleSinceCleanser++;let pause=0;let cleanserDue=false;const every=parseInt($('clEvery').value)||1;if(cycleSinceCleanser>=every){pause=runCleanser();
-cleanserDue=true;}
+ cycleSinceCleanser++;let pause=0;let cleanserDue=false;const every=parseInt($('clEvery').value)||1;if(cycleSinceCleanser>=every){pause=runCleanser();cycleSinceCleanser=0;cleanserDue=true;}
  if($('auto').checked){if(cleanserDue)readyID=setTimeout(readyCountdown,pause+200);else setTimeout(playQuiz,500);} }
 
 function noteClick(btn,note){if(current){handleSubmit(false,note);}else{if(!$('previewToggle').checked)return;btn.classList.contains('active')?stopPreview():startPreview(note,btn);} }
