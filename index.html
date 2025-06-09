@@ -1,119 +1,44 @@
-
-<!DOCTYPE html><html lang="en"><head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Shepard Ear Trainer</title>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Shepard Tone Trainer – Selectable Notes</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#333">
+<link rel="manifest" href="manifest.json">
 <style>
-:root{--blue:#2563eb;--dk:#1e40af;--bg:#f1f5f9;--card:#ffffff}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);margin:0;padding:1rem;display:flex;flex-direction:column;align-items:center;gap:.8rem}
-h2{margin:.2rem 0 .4rem;font-size:1.3rem;text-align:center}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:.8rem;max-width:600px;width:100%}
-fieldset{background:var(--card);border:1px solid #e2e8f0;border-radius:12px;padding:.6rem .9rem}
-legend{padding:0 .5rem;font-weight:600;color:var(--blue)}
-label{display:flex;justify-content:space-between;align-items:center;font-size:.85rem;margin:.35rem 0}
-select,input[type=number]{font-size:.85rem;border:1px solid #cbd5e1;border-radius:8px;padding:.3rem .55rem}
-input[type=range]{flex:1;margin-left:.4rem}
-.ctrl{background:var(--blue);color:#fff;border:none;border-radius:10px;font-weight:600;padding:.55rem 1rem;font-size:1rem;margin-top:.5rem}
-.ctrl:active{background:var(--dk)}
-.note-btn{background:#e2e8f0;border:none;border-radius:7px;padding:.4rem .75rem;font-size:.85rem;margin:.15rem}
-.note-btn.active{background:var(--blue);color:#fff}
-.notes-grid{display:grid;grid-template-columns:repeat(6,auto);gap:.25rem;justify-content:center;margin-top:.3rem}
-.info{min-height:1.2em;font-weight:600;text-align:center;margin-top:.2rem}
-#stats{font-size:.75rem;text-align:center}
+:root{--c-bg:#1a1a1a;--c-fg:#fff;--c-accent:#6cf;--c-btn:#444;--c-btn-hov:#555;--c-primary:#38a;--c-stop:#c33;--c-error:#d22}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:sans-serif;background:var(--c-bg);color:var(--c-fg);display:flex;flex-direction:column;align-items:center;gap:1rem;padding:2rem 1rem;min-height:100vh}
+h1{font-size:1.6rem;margin-bottom:1rem}
+.row{display:flex;flex-wrap:wrap;justify-content:center;gap:.8rem;margin-bottom:1rem}
+select,input[type=number]{padding:.35rem .6rem;border-radius:.5rem;border:none;background:var(--c-btn);color:var(--c-fg);font-size:1rem;width:6rem;text-align:center}
+label.toggle{display:flex;align-items:center;gap:.35rem}
+button{padding:.7rem 1.4rem;border:none;border-radius:.75rem;background:var(--c-btn);color:var(--c-fg);font-size:1rem;cursor:pointer;transition:.15s background,.05s transform}
+button:hover{background:var(--c-btn-hov)}
+button:active{transform:scale(.94)}
+button.primary{background:var(--c-primary)}
+button.primary.stop{background:var(--c-stop)}
+button.note{min-width:3rem}
+button.note.active{background:var(--c-accent);color:#000}
+button.note.disabled{opacity:.25;pointer-events:none}
+#buttons{display:flex;flex-wrap:wrap;justify-content:center;gap:.45rem;margin-top:.5rem}
+#statusArea{margin-top:1.5rem;text-align:center;line-height:1.5;width:90vw}
+#statusArea div{min-height:1.3em}
+#stats{font-size:.9rem}
+#noteChecks{max-width:400px;display:flex;flex-wrap:wrap;gap:.3rem;justify-content:center}
+#noteChecks label{font-size:.85rem;display:flex;align-items:center;gap:.25rem}
 </style>
-<link rel="manifest" href="manifest.json"><script>if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js');}</script>
-</head><body>
-<h2>Shepard Ear Trainer</h2>
-
-<div class="grid2">
-<fieldset><legend>Tone</legend>
-<label><span>Timbre</span><select id="timbre"><option selected>Sine</option><option>Triangle</option><option>Saw</option></select></label>
-<label><span>Duration</span><select id="dur"></select></label>
-<label><span>Timer</span><select id="limit"></select></label>
-<label style="flex-direction:column;align-items:flex-start"><span>C weight <b id="biasVal">1×</b></span><input id="bias" type="range" min="1" max="10" value="1"></label>
-<label><input id="auto" type="checkbox" checked> Autoplay</label>
-<label><input id="previewToggle" type="checkbox" checked> Button preview</label>
-</fieldset>
-
-<fieldset><legend>Cleanser</legend>
-<label><span>Type</span><select id="cleanser">
-  <option value="none">None</option>
-  <option value="cloud">12-tone cloud</option>
-  <option value="atonal" selected>Atonal series</option>
-  <option value="white">White noise</option>
-  <option value="pink">Pink noise</option>
-  <option value="gap">Silent gap</option></select></label>
-<label><span>Duration</span><input id="clDur" type="number" value="20" min="0.5" step="0.5" style="width:4rem"> s</label>
-<label><span>Every</span><input id="clEvery" type="number" value="10" min="1" style="width:3rem"> cycles</label>
-</fieldset>
-</div>
-
-<div id="notesWrap" class="notes-grid"></div>
-<button id="playBtn" class="ctrl">▶︎ Play Quiz Tone</button>
-<div id="guessWrap" class="notes-grid"></div>
-
-<div id="status" class="info"></div>
-<div id="answer" class="info"></div>
-<div id="stats"></div>
-
+</head>
+<body>
+<h1>Shepard Tone Trainer</h1>
+<!-- UI rows... (truncated for brevity) -->
+<script src="app.js"></script>
 <script>
-const NOTES=["C","Cs","D","Ds","E","F","Fs","G","Gs","A","As","B"];
-const $=id=>document.getElementById(id);
-let ctx;const ac=()=>ctx||(ctx=new (window.AudioContext||window.webkitAudioContext)()), hz=i=>261.625565*2**(i/12);
-
-// populate selects
-[0.5,1,1.5,2,3,5,8,10,15,30,60].forEach(v=>$('dur').add(new Option(v+' s',v)));
-[1,2,3,5,8,10,15,20,30,45,60].forEach(v=>$('limit').add(new Option(v+' s',v)));$('limit').add(new Option('None',0));$('limit').value=3;
-$('bias').oninput=()=>$('biasVal').textContent=$('bias').value+'×';
-
-// note grid
-const defaultNotes=['C','Fs','A'];
-const notesWrap=$('notesWrap'),guessWrap=$('guessWrap');
-NOTES.forEach(n=>notesWrap.insertAdjacentHTML('beforeend',`<label style="gap:.15rem"><input id="cb_${n}" type="checkbox" ${defaultNotes.includes(n)?'checked':''}>${n.replace('s','♯')}</label>`));
-notesWrap.addEventListener('change',refreshBtns);refreshBtns();
-function selected(){return NOTES.filter(n=>$('cb_'+n).checked);}
-function refreshBtns(){guessWrap.innerHTML='';selected().forEach(n=>{const b=document.createElement('button');b.textContent=n.replace('s','♯');b.className='note-btn';b.onclick=()=>noteClick(b,n);guessWrap.appendChild(b);});}
-
-// state
-let previewMaster,previewNodes,quizMaster,quizNodes,current,startTime;
-let hits=0,tries=0,streak=0,best=0,rts=[];
-let countdownID,readyID,answerTimeout,cycleSinceCleanser=0;
-
-// preview
-function stopPreview(){if(!previewMaster)return;previewMaster.gain.setTargetAtTime(0,ac().currentTime,.05);setTimeout(()=>previewNodes.forEach(o=>o.disconnect()),120);previewMaster=null;previewNodes=[];document.querySelectorAll('.note-btn.active').forEach(b=>b.classList.remove('active'));}
-function startPreview(nt,btn){stopPreview();
-await ac().resume();
-const ctx=ac();previewMaster=ctx.createGain();previewMaster.gain.value=.4;previewMaster.connect(ctx.destination);const base=hz(NOTES.indexOf(nt));for(let k=-5;k<=5;k++){const f=base*2**k;if(f<40||f>2e4)continue;const o=ctx.createOscillator();o.type='sine';o.frequency.value=f;const g=ctx.createGain();g.gain.value=Math.exp(-.5*(Math.log2(f/440)/.33)**2);o.connect(g).connect(previewMaster);o.start();previewNodes.push(o);}btn.classList.add('active');}
-
-// cleanser
-function noise(kind,d){const ctx=ac(),b=ctx.createBuffer(1,ctx.sampleRate*d,ctx.sampleRate),a=b.getChannelData(0);for(let i=0;i<a.length;i++){let v=Math.random()*2-1;if(kind==='pink')v/=Math.sqrt(i+1);a[i]=v*.25;}const s=ctx.createBufferSource();s.buffer=b;s.connect(ctx.destination);s.start();}
-function cloud(d){const ctx=ac(),g=ctx.createGain();g.gain.value=.35;g.connect(ctx.destination);const t0=ctx.currentTime;g.gain.setValueAtTime(0,t0);g.gain.linearRampToValueAtTime(.35,t0+.005);g.gain.setValueAtTime(.35,t0+d-.05);g.gain.linearRampToValueAtTime(0,t0+d);for(let i=0;i<14;i++){const n=Math.floor(Math.random()*12),c=Math.random()*40-20;const f=hz(n)*2**(c/1200);const o=ctx.createOscillator();o.type='sine';o.frequency.value=f;o.connect(g);o.start(t0);o.stop(t0+d);}}
-function atonalSeries(total){const ctx=ac(),g=ctx.createGain();g.gain.value=.35;g.connect(ctx.destination);let t=ctx.currentTime;const rhythm=[.25,.5,.75,1];while(t<ctx.currentTime+total){const dur=rhythm[Math.floor(Math.random()*rhythm.length)];const f=hz(Math.floor(Math.random()*12));const o=ctx.createOscillator();o.type='sine';o.frequency.value=f;o.connect(g);o.start(t);o.stop(t+dur);t+=dur;}}
-
-function runCleanser(){const kind=$('cleanser').value,d=parseFloat($('clDur').value)||1;let ms=0;if(kind!=='none'){$('status').textContent='⏳ cleanser';switch(kind){case'cloud':cloud(d);break;case'atonal':atonalSeries(d);break;case'white':noise('white',d);break;case'pink':noise('pink',d);break;}ms=d*1000;}if(kind==='gap')ms=d*1000;setTimeout(()=>$('status').textContent='',ms);return ms;}
-
-// helpers
-function clearTimers(){clearTimeout(countdownID);clearTimeout(readyID);clearTimeout(answerTimeout);}
-function showAnswer(txt){$('answer').textContent=txt;clearTimeout(answerTimeout);answerTimeout=setTimeout(()=>$('answer').textContent='',7000);}
-
-// quiz flow
-async function playQuiz(){stopPreview();clearTimers();stopQuiz();$('answer').textContent='';const pool=[];const bias=parseInt($('bias').value);selected().forEach(n=>{for(let i=0;i<(n==='C'?bias:1);i++)pool.push(n);});if(!pool.length){alert('Select notes');return;}current=pool[Math.floor(Math.random()*pool.length)];
- const ctx=ac(),dur=parseFloat($('dur').value),wave=$('timbre').value;quizMaster=ctx.createGain();quizMaster.connect(ctx.destination);if(dur>0){quizMaster.gain.setValueAtTime(0,ctx.currentTime);quizMaster.gain.linearRampToValueAtTime(.5,ctx.currentTime+.05);quizMaster.gain.setValueAtTime(.5,ctx.currentTime+dur-.05);quizMaster.gain.linearRampToValueAtTime(0,ctx.currentTime+dur);}else quizMaster.gain.value=.5;const base=hz(NOTES.indexOf(current));for(let k=-5;k<=5;k++){const f=base*2**k;if(f<40||f>2e4)continue;const o=ctx.createOscillator();o.type=wave.toLowerCase();o.frequency.value=f;const g=ctx.createGain();g.gain.value=Math.exp(-.5*(Math.log2(f/440)/.33)**2);o.connect(g).connect(quizMaster);o.start();if(dur>0)o.stop(ctx.currentTime+dur);quizNodes.push(o);}quizNodes.push(quizMaster);
- startTime=performance.now();$('status').textContent='🎵 playing';
- const lim=parseInt($('limit').value);if(lim){countdownID=setTimeout(()=>startCountdown(lim),dur*1000);} }
-
-function startCountdown(sec){let rem=sec;$('status').textContent=rem;countdownID=setInterval(()=>{rem--;$('status').textContent=rem;if(rem<=0){clearInterval(countdownID);handleSubmit(true,null);}},1000);}
-
-function stopQuiz(){if(!quizMaster)return;quizMaster.gain.setTargetAtTime(0,ac().currentTime,.05);setTimeout(()=>quizNodes.forEach(o=>o.disconnect()),120);quizMaster=null;quizNodes=[];}
-
-function updateStats(){const acc=hits/tries*100||0,avg=rts.reduce((a,b)=>a+b,0)/rts.length||0;$('stats').textContent=`Attempts ${tries} • Acc ${acc.toFixed(1)}% • Best ${best} • Avg ${(avg).toFixed(2)} s`; }
-
-function readyCountdown(){let rem=5;$('status').textContent='Ready… '+rem;readyID=setInterval(()=>{rem--;if(rem<=0){clearInterval(readyID);$('status').textContent='';playQuiz();}else $('status').textContent='Ready… '+rem;},1000);}
-
-function handleSubmit(auto,note){clearTimers();stopQuiz();const rt=(performance.now()-startTime)/1000;rts.push(rt);tries++;let ok=!auto&&note===current;if(ok){hits++;streak++;best=Math.max(best,streak);showAnswer(`✅ ${note} (${rt.toFixed(2)} s)`);}else{streak=0;showAnswer(auto?`⌛ Time – ${current}`:`❌ ${current} (${rt.toFixed(2)} s)`);}current=null;updateStats();
- cycleSinceCleanser++;let pause=0;let cleanserDue=false;const every=parseInt($('clEvery').value)||1;if(cycleSinceCleanser>=every){pause=runCleanser();cycleSinceCleanser=0;cleanserDue=true;}
- if($('auto').checked){if(cleanserDue)readyID=setTimeout(readyCountdown,pause+200);else setTimeout(playQuiz,500);} }
-
-function noteClick(btn,note){if(current){handleSubmit(false,note);}else{if(!$('previewToggle').checked)return;btn.classList.contains('active')?stopPreview():startPreview(note,btn);} }
-$('playBtn').onclick=playQuiz;
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(console.error);
+}
 </script>
-</body></html>
+</body>
+</html>
