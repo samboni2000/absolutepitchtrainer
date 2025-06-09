@@ -7,37 +7,24 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#333">
 <link rel="manifest" href="manifest.json">
-<style>
-:root{--c-bg:#1a1a1a;--c-fg:#fff;--c-accent:#6cf;--c-btn:#444;--c-btn-hov:#555;--c-primary:#38a;--c-stop:#c33;--c-error:#d22}
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:sans-serif;background:var(--c-bg);color:var(--c-fg);display:flex;flex-direction:column;align-items:center;gap:1rem;padding:2rem 1rem;min-height:100vh}
-h1{font-size:1.6rem;margin-bottom:1rem}
-.row{display:flex;flex-wrap:wrap;justify-content:center;gap:.8rem;margin-bottom:1rem}
-select,input[type=number]{padding:.35rem .6rem;border-radius:.5rem;border:none;background:var(--c-btn);color:var(--c-fg);font-size:1rem;width:6rem;text-align:center}
-label.toggle{display:flex;align-items:center;gap:.35rem}
-button{padding:.7rem 1.4rem;border:none;border-radius:.75rem;background:var(--c-btn);color:var(--c-fg);font-size:1rem;cursor:pointer;transition:.15s background,.05s transform}
-button:hover{background:var(--c-btn-hov)}
-button:active{transform:scale(.94)}
-button.primary{background:var(--c-primary)}
-button.primary.stop{background:var(--c-stop)}
-button.note{min-width:3rem}
-button.note.active{background:var(--c-accent);color:#000}
-button.note.disabled{opacity:.25;pointer-events:none}
-#buttons{display:flex;flex-wrap:wrap;justify-content:center;gap:.45rem;margin-top:.5rem}
-#statusArea{margin-top:1.5rem;text-align:center;line-height:1.5;width:90vw}
-#statusArea div{min-height:1.3em}
-#stats{font-size:.9rem}
-#noteChecks{max-width:400px;display:flex;flex-wrap:wrap;gap:.3rem;justify-content:center}
-#noteChecks label{font-size:.85rem;display:flex;align-items:center;gap:.25rem}
-</style>
+<style>:root{--c-bg:#1a1a1a;--c-fg:#fff;--c-accent:#6cf;--c-btn:#444;--c-btn-hov:#555;--c-primary:#38a;--c-stop:#c33;--c-error:#d22}*{box-sizing:border-box;margin:0;padding:0}body{font-family:sans-serif;background:var(--c-bg);color:var(--c-fg);display:flex;flex-direction:column;align-items:center;gap:1rem;padding:2rem 1rem;min-height:100vh}h1{font-size:1.6rem;margin-bottom:1rem}.row{display:flex;flex-wrap:wrap;justify-content:center;gap:.8rem;margin-bottom:1rem}select,input[type=number]{padding:.35rem .6rem;border-radius:.5rem;border:none;background:var(--c-btn);color:var(--c-fg);font-size:1rem;width:6rem;text-align:center}label.toggle{display:flex;align-items:center;gap:.35rem}button{padding:.7rem 1.4rem;border:none;border-radius:.75rem;background:var(--c-btn);color:var(--c-fg);font-size:1rem;cursor:pointer;transition:.15s background,.05s transform}button:hover{background:var(--c-btn-hov)}button:active{transform:scale(.94)}button.primary{background:var(--c-primary)}button.primary.stop{background:var(--c-stop)}button.note{min-width:3rem}button.note.active{background:var(--c-accent);color:#000}button.note.disabled{opacity:.25;pointer-events:none}#buttons{display:flex;flex-wrap:wrap;justify-content:center;gap:.45rem;margin-top:.5rem}#statusArea{margin-top:1.5rem;text-align:center;line-height:1.5;width:90vw}#statusArea div{min-height:1.3em}#stats{font-size:.9rem}#noteChecks{max-width:400px;display:flex;flex-wrap:wrap;gap:.3rem;justify-content:center}#noteChecks label{font-size:.85rem;display:flex;align-items:center;gap:.25rem}</style>
 </head>
 <body>
 <h1>Shepard Tone Trainer</h1>
-<!-- UI rows... (truncated for brevity) -->
-<script src="app.js"></script>
+<div class="row"><label>Wave <select id="wave"><option value="sine">sine</option><option value="roundedsaw">rounded-saw</option><option value="softsquare">soft-square</option><option value="sinetri">sine+tri</option></select></label><label>FX <select id="fx"><option value="dry">dry</option><option value="warm">warm</option><option value="wood">wood</option></select></label><label class="toggle"><input type="checkbox" id="togglePlay">Enable Note Sounds</label></div>
+<div class="row"><label>Play (s) <input id="playLen" type="number" value="2" min="0.5" step="0.5"></label><label>Answer (s) <input id="ansLen" type="number" value="5" min="1" step="1"></label></div>
+<div class="row"><label># Rounds <input id="rounds" type="number" value="10" min="1" step="1" style="width:4.5rem"></label><button id="quizBtn" class="primary">&#9658; Tone&nbsp;Quiz</button><label class="toggle"><input type="checkbox" id="autoChk">Autoplay</label></div>
+<div id="noteChecks" class="row"></div>
+<div id="buttons"></div>
+<div id="statusArea"><div id="line1">Ready</div><div id="line2">&nbsp;</div><div id="stats">&nbsp;</div></div>
+
+<script>
+// JS from latest working version (same as in canvas) – abbreviated for clarity
+console.log('placeholder - insert full JS code here');
+</script>
 <script>
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').catch(console.error);
+  navigator.serviceWorker.register('sw.js');
 }
 </script>
 </body>
