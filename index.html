@@ -1,30 +1,259 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Shepard Tone Trainer – Selectable Notes</title>
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#333">
-<link rel="manifest" href="manifest.json">
-<style>:root{--c-bg:#1a1a1a;--c-fg:#fff;--c-accent:#6cf;--c-btn:#444;--c-btn-hov:#555;--c-primary:#38a;--c-stop:#c33;--c-error:#d22}*{box-sizing:border-box;margin:0;padding:0}body{font-family:sans-serif;background:var(--c-bg);color:var(--c-fg);display:flex;flex-direction:column;align-items:center;gap:1rem;padding:2rem 1rem;min-height:100vh}h1{font-size:1.6rem;margin-bottom:1rem}.row{display:flex;flex-wrap:wrap;justify-content:center;gap:.8rem;margin-bottom:1rem}select,input[type=number]{padding:.35rem .6rem;border-radius:.5rem;border:none;background:var(--c-btn);color:var(--c-fg);font-size:1rem;width:6rem;text-align:center}label.toggle{display:flex;align-items:center;gap:.35rem}button{padding:.7rem 1.4rem;border:none;border-radius:.75rem;background:var(--c-btn);color:var(--c-fg);font-size:1rem;cursor:pointer;transition:.15s background,.05s transform}button:hover{background:var(--c-btn-hov)}button:active{transform:scale(.94)}button.primary{background:var(--c-primary)}button.primary.stop{background:var(--c-stop)}button.note{min-width:3rem}button.note.active{background:var(--c-accent);color:#000}button.note.disabled{opacity:.25;pointer-events:none}#buttons{display:flex;flex-wrap:wrap;justify-content:center;gap:.45rem;margin-top:.5rem}#statusArea{margin-top:1.5rem;text-align:center;line-height:1.5;width:90vw}#statusArea div{min-height:1.3em}#stats{font-size:.9rem}#noteChecks{max-width:400px;display:flex;flex-wrap:wrap;gap:.3rem;justify-content:center}#noteChecks label{font-size:.85rem;display:flex;align-items:center;gap:.25rem}</style>
+  <meta charset="UTF-8" />
+  <title>Shepard Tone Trainer – Selectable Notes</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#333" />
+  <style>
+    :root{--c-bg:#1a1a1a;--c-fg:#fff;--c-accent:#6cf;--c-btn:#444;--c-btn-hov:#555;
+          --c-primary:#38a;--c-stop:#c33;--c-error:#d22}
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:sans-serif;background:var(--c-bg);color:var(--c-fg);
+         display:flex;flex-direction:column;align-items:center;gap:1rem;
+         padding:2rem 1rem;min-height:100vh}
+    h1{font-size:1.6rem;margin-bottom:1rem}
+    .row{display:flex;flex-wrap:wrap;justify-content:center;gap:.8rem;margin-bottom:1rem}
+    select,input[type=number]{padding:.35rem .6rem;border-radius:.5rem;border:none;
+      background:var(--c-btn);color:var(--c-fg);font-size:1rem;width:6rem;text-align:center}
+    label.toggle{display:flex;align-items:center;gap:.35rem}
+    button{padding:.7rem 1.4rem;border:none;border-radius:.75rem;background:var(--c-btn);
+           color:var(--c-fg);font-size:1rem;cursor:pointer;transition:.15s background,.05s transform}
+    button:hover{background:var(--c-btn-hov)}
+    button:active{transform:scale(.94)}
+    button.primary{background:var(--c-primary)}
+    button.primary.stop{background:var(--c-stop)}
+    button.note{min-width:3rem}
+    button.note.active{background:var(--c-accent);color:#000}
+    button.note.disabled{opacity:.25;pointer-events:none}
+    #buttons{display:flex;flex-wrap:wrap;justify-content:center;gap:.45rem;margin-top:.5rem}
+    #statusArea{margin-top:1.5rem;text-align:center;line-height:1.5;width:90vw}
+    #statusArea div{min-height:1.3em}
+    #stats{font-size:.9rem}
+    #noteChecks{max-width:400px;display:flex;flex-wrap:wrap;gap:.3rem;justify-content:center}
+    #noteChecks label{font-size:.85rem;display:flex;align-items:center;gap:.25rem}
+  </style>
 </head>
 <body>
-<h1>Shepard Tone Trainer</h1>
-<div class="row"><label>Wave <select id="wave"><option value="sine">sine</option><option value="roundedsaw">rounded-saw</option><option value="softsquare">soft-square</option><option value="sinetri">sine+tri</option></select></label><label>FX <select id="fx"><option value="dry">dry</option><option value="warm">warm</option><option value="wood">wood</option></select></label><label class="toggle"><input type="checkbox" id="togglePlay">Enable Note Sounds</label></div>
-<div class="row"><label>Play (s) <input id="playLen" type="number" value="2" min="0.5" step="0.5"></label><label>Answer (s) <input id="ansLen" type="number" value="5" min="1" step="1"></label></div>
-<div class="row"><label># Rounds <input id="rounds" type="number" value="10" min="1" step="1" style="width:4.5rem"></label><button id="quizBtn" class="primary">&#9658; Tone&nbsp;Quiz</button><label class="toggle"><input type="checkbox" id="autoChk">Autoplay</label></div>
-<div id="noteChecks" class="row"></div>
-<div id="buttons"></div>
-<div id="statusArea"><div id="line1">Ready</div><div id="line2">&nbsp;</div><div id="stats">&nbsp;</div></div>
+  <h1>Shepard Tone Trainer</h1>
+
+  <div class="row">
+    <label>Wave
+      <select id="wave">
+        <option>sine</option><option>roundedsaw</option><option>softsquare</option><option>sinetri</option>
+      </select>
+    </label>
+    <label>FX
+      <select id="fx">
+        <option>dry</option><option>warm</option><option>wood</option>
+      </select>
+    </label>
+    <label class="toggle"><input type="checkbox" id="togglePlay">Enable Note Sounds</label>
+  </div>
+
+  <div class="row">
+    <label>Play (s) <input id="playLen" type="number" value="2" min="0.5" step="0.5"></label>
+    <label>Answer (s) <input id="ansLen" type="number" value="3" min="1" step="1"></label>
+  </div>
+
+  <div class="row">
+    <label># Rounds <input id="rounds" type="number" value="20" min="1" step="1" style="width:4.5rem"></label>
+    <button id="quizBtn" class="primary">&#9658; Tone Quiz</button>
+    <label class="toggle"><input type="checkbox" id="autoChk" checked>Autoplay</label>
+  </div>
+
+  <div id="noteChecks" class="row"></div>
+  <div id="buttons"></div>
+  <div id="statusArea">
+    <div id="line1">Ready</div>
+    <div id="line2">&nbsp;</div>
+    <div id="stats">&nbsp;</div>
+  </div>
 
 <script>
-// JS from latest working version (same as in canvas) – abbreviated for clarity
-console.log('placeholder - insert full JS code here');
+const NOTES=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const DEFAULT_ACTIVE=new Set([0,6,9]); // C F# A
+const waveSel=document.getElementById('wave');
+const fxSel=document.getElementById('fx');
+const playLen=document.getElementById('playLen');
+const ansLen=document.getElementById('ansLen');
+const roundIn=document.getElementById('rounds');
+const playToggle=document.getElementById('togglePlay');
+const autoChk=document.getElementById('autoChk');
+const quizBtn=document.getElementById('quizBtn');
+const btnWrap=document.getElementById('buttons');
+const checkWrap=document.getElementById('noteChecks');
+const line1=document.getElementById('line1');
+const line2=document.getElementById('line2');
+const stats=document.getElementById('stats');
+
+let allowPlay=false,currentBtn=null,currentGain=null;
+let quiz=false,auto=true,rounds=20,answerIdx=0,countdownTimer=null,quizGain=null,guessReady=false;
+let total=0,corr=0,streak=0;
+const active=new Set(DEFAULT_ACTIVE);
+const btnElems=[];
+
+/* Build note checks & buttons */
+NOTES.forEach((n,i)=>{
+  // checkbox
+  const lab=document.createElement('label');
+  const chk=document.createElement('input');
+  chk.type='checkbox';chk.checked=DEFAULT_ACTIVE.has(i);chk.dataset.idx=i;
+  chk.onchange=e=>{
+    const idx=+e.target.dataset.idx;
+    if(e.target.checked){active.add(idx);btnElems[idx].classList.remove('disabled');}
+    else{active.delete(idx);btnElems[idx].classList.add('disabled');if(currentBtn===btnElems[idx])manualStop();}
+  };
+  lab.append(chk,n);checkWrap.appendChild(lab);
+  // button
+  const b=document.createElement('button');
+  b.textContent=n;b.className='note';
+  if(!DEFAULT_ACTIVE.has(i))b.classList.add('disabled');
+  b.onclick=()=>{
+    if(!active.has(i))return;
+    if(quiz){if(!guessReady)return;guess(i);return;}
+    if(!allowPlay)return;
+    (currentBtn===b)?manualStop():manualStart(i,b);
+  };
+  btnWrap.appendChild(b);btnElems[i]=b;
+});
+
+/* Audio engine */
+const ROOT=16.3516,MIN_F=20,FADE=0.08;
+let ac;const ctx=()=>ac||(ac=new (window.AudioContext||window.webkitAudioContext)());
+const waveCache={};
+function getWave(t){
+  if(t==='sine')return null;
+  if(waveCache[t])return waveCache[t];
+  const H=32,re=new Float32Array(H+1),im=new Float32Array(H+1);
+  const fill=fn=>{for(let n=1;n<=H;n++)im[n]=fn(n);}
+  if(t==='roundedsaw')fill(n=>1/(n*n));
+  if(t==='softsquare')fill(n=>n%2?1/(n*n):0);
+  if(t==='sinetri')   fill(n=>n===1?0.7:n%2?0.3/(n*n):0);
+  return waveCache[t]=ctx().createPeriodicWave(re,im);
+}
+const gaussian=n=>{
+  const c=(n-1)/2,s=n/2.5;
+  let sum=0,a=[];
+  for(let i=0;i<n;i++){const v=Math.exp(-.5*((i-c)/s)**2);a.push(v);sum+=v;}
+  return a.map(v=>v/sum);
+};
+const freqs=idx=>{
+  const ny=ctx().sampleRate/2,arr=[];
+  for(let o=-6;o<=12;o++){
+    const f=ROOT*Math.pow(2,o+idx/12);
+    if(f<MIN_F)continue;
+    if(f>=ny)break;
+    arr.push(f);
+  }
+  return arr;
+};
+function fadeOut(g){
+  if(!g)return;
+  const c=ctx();
+  g.gain.cancelScheduledValues(c.currentTime);
+  g.gain.setTargetAtTime(0,c.currentTime,FADE/3);
+  setTimeout(()=>{try{g.disconnect();}catch{}},(FADE+0.1)*1000);
+}
+function buildShepard(idx,dur){
+  const c=ctx(),f=freqs(idx),w=gaussian(f.length),bus=c.createGain();
+  bus.gain.setValueAtTime(0,c.currentTime);
+  bus.gain.linearRampToValueAtTime(1,c.currentTime+FADE);
+  bus.connect(c.destination);
+  f.forEach((fr,ix)=>{
+    const o=c.createOscillator(),pw=getWave(waveSel.value);
+    pw?o.setPeriodicWave(pw):o.type='sine';
+    o.frequency.value=fr;
+    const g=c.createGain();g.gain.value=w[ix];
+    o.connect(g).connect(bus);
+    o.start();o.stop(c.currentTime+dur+FADE*2);
+    o.onended=()=>{o.disconnect();g.disconnect();};
+  });
+  return bus;
+}
+
+/* Manual */
+function manualStart(idx,btn){
+  if(currentBtn)manualStop();
+  currentGain=buildShepard(idx,+playLen.value);
+  currentBtn=btn;btn.classList.add('active');
+}
+function manualStop(){
+  if(!currentBtn)return;
+  fadeOut(currentGain);
+  currentBtn.classList.remove('active');
+  currentBtn=currentGain=null;
+}
+
+/* Quiz */
+const setQuizBtn=s=>{
+  quizBtn.classList.toggle('stop',s!=='play');
+  quizBtn.innerHTML=s==='play'?'&#9658; Tone Quiz':'&#9632; Stop Quiz';
+};
+function startCountdown(){
+  guessReady=true;
+  let left=Math.ceil(+ansLen.value);
+  line1.textContent='Countdown: '+left+'s';
+  countdownTimer=setInterval(()=>{
+    left--;
+    if(left<=0){
+      clearInterval(countdownTimer);
+      countdownTimer=null;
+      timeUp();
+    }else{
+      line1.textContent='Countdown: '+left+'s';
+    }
+  },1000);
+}
+function beginQuiz(){
+  if(quiz){abortQuiz();return;}
+  if(active.size===0){line1.textContent='Select at least one note';return;}
+  auto=autoChk.checked; rounds=+roundIn.value||1;
+  fadeOut(quizGain);
+  quiz=true;guessReady=false;setQuizBtn('stop');line2.textContent='';
+  const pool=[...active];answerIdx=pool[Math.floor(Math.random()*pool.length)];
+  line1.textContent='Playing tone…';
+  quizGain=buildShepard(answerIdx,+playLen.value);
+  setTimeout(startCountdown,+playLen.value*1000);
+  if(auto)rounds--;
+}
+function endRound(ok,msg){
+  quiz=false;guessReady=false;
+  clearInterval(countdownTimer);countdownTimer=null;
+  fadeOut(quizGain);quizGain=null;
+  setQuizBtn('play');
+  line2.textContent=msg;
+  line2.style.color=ok?'var(--c-accent)':'var(--c-error)';
+  total++; ok?(corr++,streak++):streak=0;
+  updateStats();
+  if(auto&&rounds>0) setTimeout(beginQuiz,800); else auto=false;
+}
+const guess=i=>{
+  if(!quiz||!guessReady)return;
+  endRound(i===answerIdx,i===answerIdx?`✔ Correct (${NOTES[i]})`:`✖ Incorrect – ${NOTES[answerIdx]}`);
+};
+const timeUp=()=>endRound(false,`⌛ Time up – ${NOTES[answerIdx]}`);
+const abortQuiz=()=>{
+  quiz=false;guessReady=false;
+  clearInterval(countdownTimer);countdownTimer=null;
+  fadeOut(quizGain);quizGain=null;
+  setQuizBtn('play');
+  line1.textContent='Quiz aborted';line2.textContent='';
+  auto=false;
+};
+/* Listeners & init */
+playToggle.onchange=e=>{allowPlay=e.target.checked;manualStop();};
+quizBtn.onclick=beginQuiz;
+const updateStats=()=>{
+  const pct=total?Math.round(corr/total*100):0;
+  stats.textContent=`Total ${total} | Correct ${corr} | Incorrect ${total-corr} | ${pct}% | Streak ${streak}`;
+};
+updateStats();
 </script>
 <script>
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js');
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js').catch(console.error);
 }
 </script>
 </body>
